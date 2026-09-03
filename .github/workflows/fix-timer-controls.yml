@@ -1,0 +1,33 @@
+name: Fix timer controls
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply timer state controls
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          import re
+          p=Path('index.html')
+          s=p.read_text()
+          old=s
+          s=s.replace('<button class="btn startBtn" id="mainAction">START</button><button class="btn" id="secondaryAction">PAUSE</button>', '<button class="btn startBtn" id="mainAction">START</button><button class="btn" id="secondaryAction" disabled>PAUSE</button>')
+          s=re.sub(r'function updateControls\(\)\{.*?\}', '''function updateControls(){const b=document.getElementById('mainAction'),s=document.getElementById('secondaryAction');if(!b||!s)return;if(!draft().startedAt){b.textContent='START';b.className='btn startBtn';s.textContent='PAUSE';s.className='btn';s.disabled=true}else if(resting()){b.textContent='RESTING';b.className='btn restBtn';s.textContent='STOP';s.className='btn stopBtn';s.disabled=false}else if(running()){b.textContent='REST';b.className='btn restBtn';s.textContent='STOP';s.className='btn stopBtn';s.disabled=false}else{b.textContent='RESUME';b.className='btn resumeBtn';s.textContent='STOP';s.className='btn stopBtn';s.disabled=false}}''', s, count=1)
+          s=s.replace("if(t.id==='mainAction'){if(!draft().startedAt)return startWorkout();if(resting())return pauseRest();if(running())return startRest();return startWorkout()}if(t.id==='secondaryAction'){if(!draft().startedAt)return; if(resting())return endWorkout();if(running())return pauseWorkout();return endWorkout()}", "if(t.id==='mainAction'){if(!draft().startedAt)return startWorkout();if(running())return startRest();if(resting())return pauseRest();return startWorkout()}if(t.id==='secondaryAction'){if(!draft().startedAt)return;if(running()||resting())return endWorkout();return endWorkout()}")
+          if s==old:
+              raise SystemExit('No timer-control changes matched; refusing to commit.')
+          p.write_text(s)
+          PY
+      - name: Commit patched file
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git diff --cached --quiet || git commit -m 'Update workout timer state controls'
+          git push

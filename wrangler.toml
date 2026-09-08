@@ -1,0 +1,7 @@
+name = "armor-building-formula-tracker"
+compatibility_date = "2026-09-08"
+main = "worker.js"
+
+[assets]
+directory = "."
+binding = "ASSETS"

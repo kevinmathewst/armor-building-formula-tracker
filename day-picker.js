@@ -171,7 +171,7 @@ function renderProgram(){
         <div class="stat"><span>PRESS</span><b>2-3-5-10</b><small>20 reps per ladder · goal 100</small></div>
         <div class="stat"><span>ABC</span><b>2 · 1 · 3</b><small>6 reps per round · goal 30</small></div>
       </div>
-      <div class="note" style="margin-top:10px"><b>Weeks 1–2:</b> one movement per day, alternating Press and ABC.<br><b>Weeks 3–6:</b> build volume; Day Two is the hardest session.<br><b>Weeks 7–8:</b> goal weeks.</div>
+      <div class="note" style="margin-top:10px"><b>Weeks 1–2:</b> one movement per day, alternating Press and ABC.<br><b>Weeks 3–6:</b> build volume; the hardest session alternates between Day Three (Weeks 3 and 5) and Day Two (Weeks 4 and 6).<br><b>Weeks 7–8:</b> goal weeks.</div>
       <div class="note" style="margin-top:8px"><b>Press guides:</b> Double · Alternating · See-Saw · Touch-Down<br><b>ABC guides:</b> Two-Bell Bilateral · Single / Offset-Load Alternating</div>
     </section>
     <section class="section"><h2>Weeks</h2>
@@ -315,39 +315,6 @@ function renderAll(){const d=read(),p=currentPlan(d);selected=p;renderWorkout(p,
 function setTab(tab){
   ['today','progress','program'].forEach(k=>document.getElementById(k+'View').classList.toggle('hidden',k!==tab));
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===tab));
-}
-function renderProgram(){
-  const host=document.getElementById('programView'),p=currentPlan(read());
-  host.innerHTML=`
-    <section class="section"><h2>Program</h2><div class="statGrid">
-      <div class="stat"><span>PRESS</span><b>2-3-5-10</b><small>20 reps per ladder · goal 100</small></div>
-      <div class="stat"><span>ABC</span><b>2 · 1 · 3</b><small>6 reps per round · goal 30</small></div>
-    </div><div class="note" style="margin-top:10px"><b>Weeks 1–2:</b> one movement per day, alternating Press and ABC.<br><b>Weeks 3–6:</b> build volume; Day Two is the hardest session.<br><b>Weeks 7–8:</b> goal weeks.</div>
-    <div class="note" style="margin-top:8px"><b>Press guides:</b> Double · Alternating · See-Saw · Touch-Down<br><b>ABC guides:</b> Two-Bell Bilateral · Single / Offset-Load Alternating</div></section>
-    <section class="section"><h2>Weeks</h2>${Object.entries(schedule).map(([w,days])=>`<details class="programWeek" ${Number(w)===p.week?'open':''}><summary>Week ${w}${w>=7?' — GOAL WEEK':''}</summary><div class="days">${days.map((x,i)=>`<div class="day"><b>Day ${i+1} · ${x[0]}</b><br><span class="muted">${esc(x[1])}</span></div>`).join('')}</div></details>`).join('')}</section>
-    <section class="section"><h2>Data</h2><div class="note">Workouts stay on this device. Export <b>ABF-backup.json</b> to Files/iCloud Drive periodically. Import it here if you need to restore the log.</div><div class="backupRow"><button type="button" id="exportBackup">EXPORT BACKUP</button><button type="button" id="importBackup">IMPORT BACKUP</button></div><input id="backupFile" type="file" accept=".json,application/json" hidden></section>`;
-  document.getElementById('exportBackup').addEventListener('click',exportBackup);
-  document.getElementById('importBackup').addEventListener('click',()=>document.getElementById('backupFile').click());
-  document.getElementById('backupFile').addEventListener('change',importBackup);
-}
-function exportBackup(){
-  const payload={schema:SCHEMA,app:'Armor Building Formula',exportedAt:new Date().toISOString(),data:read()};
-  const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');
-  a.href=url;a.download='ABF-backup.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);toast('Backup exported');
-}
-function importBackup(e){
-  const file=e.target.files?.[0];if(!file)return;
-  const reader=new FileReader();
-  reader.onload=()=>{
-    try{
-      const payload=JSON.parse(reader.result),d=payload.data||payload;
-      if(!d||!Array.isArray(d.logs))throw new Error();
-      if(!confirm('Replace the current workout log with this backup?'))return;
-      write(d);renderAll();toast('Backup restored');
-    }catch{toast('Invalid backup file')}
-    e.target.value='';
-  };
-  reader.readAsText(file);
 }
 function renderProgress(){
   const host=document.getElementById('progressView');if(!host)return;

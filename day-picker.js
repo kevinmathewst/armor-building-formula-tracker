@@ -123,10 +123,7 @@ function injectStyle(){
 
 function guideHTML(type,guide){
   const g=type==='ABC'?(guide==='ABC Bilateral'?abcGuides.bilateral:abcGuides.alternating):pressGuides[guide];
-  const totalText=type==='ABC'
-    ?(guide==='ABC Bilateral'?'Round: 2 cleans · 1 press · 3 front squats':'Round: 4 cleans · 4 presses · 4 front squats')
-    :'Reps as prescribed: 2-3-5-10 ladder = 20 reps';
-  return`<div class="guideBox"><div class="guideText"><b>${esc(g.title)}</b><br>${esc(g.text)}</div><div class="guideTotal">${esc(totalText)}</div></div>`;
+  return`<div class="guideBox"><div class="guideText"><b>${esc(g.title)}</b><br>${esc(g.text)}</div></div>`;
 }
 
 function setupControls(setup,left,right){
@@ -287,7 +284,7 @@ function deleteLog(token){
   d.logs=d.logs.filter(x=>x.press||x.abc);write(d);renderAll();toast('Workout deleted');
 }
 function move(delta){
-  const d=read(),p=currentPlan(d);let day=p.day+delta,week=p.week;
+  const p=selected||currentPlan(read());let day=p.day+delta,week=p.week;
   if(day<1){if(week>1){week--;day=3}else return}
   else if(day>3){if(week<8){week++;day=1}else return}
   const target={week,day};renderSelected(target);
@@ -378,8 +375,7 @@ function setTab(tab){
   ['today','progress','program'].forEach(k=>document.getElementById(k+'View').classList.toggle('hidden',k!==tab));
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===tab));
 }
-function renderProgram(){/* replaced below */}
-function renderProgramReal(){
+function renderProgram(){
   const host=document.getElementById('programView'),p=currentPlan(read());
   host.innerHTML=`
     <section class="section"><h2>Program</h2><div class="statGrid">
@@ -393,8 +389,6 @@ function renderProgramReal(){
   document.getElementById('importBackup').addEventListener('click',()=>document.getElementById('backupFile').click());
   document.getElementById('backupFile').addEventListener('change',importBackup);
 }
-renderProgram=renderProgramReal;
-
 function exportBackup(){
   const payload={schema:SCHEMA,app:'Armor Building Formula',exportedAt:new Date().toISOString(),data:read()};
   const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');

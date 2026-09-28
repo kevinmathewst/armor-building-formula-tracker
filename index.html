@@ -34,32 +34,28 @@ button,input,select{font:inherit}button{cursor:pointer}.app{max-width:920px;marg
 <div id="toast" class="toast"></div>
 <script>
 (()=>{"use strict";
-const KEY="abf_data_v3",TKEY="abf_timers_v3",BACKUP_KEY="abf_backup_v3",SCHEMA=3;
-const DEFAULT={startDate:new Date().toISOString().slice(0,10),logs:[]};
-let data=load(KEY,DEFAULT),timers=load(TKEY,{elapsed:0,lastTick:null,running:false,limitEnd:null,restEnd:null});
-let wakeLock=null;
+const TKEY="abf_timers_v3";
+let timers=load(TKEY,{elapsed:0,lastTick:null,running:false,limitEnd:null,restEnd:null}),wakeLock=null;
 function load(k,f){try{return JSON.parse(localStorage.getItem(k))??f}catch{return f}}
-function persist(){localStorage.setItem(KEY,JSON.stringify(data));localStorage.setItem(BACKUP_KEY,JSON.stringify({schema:SCHEMA,savedAt:new Date().toISOString(),data}))}
-function persistTimers(){localStorage.setItem(TKEY,JSON.stringify(timers))}
-function toast(s){const e=document.getElementById("toast");e.textContent=s;e.classList.add("show");clearTimeout(window.__toast);window.__toast=setTimeout(()=>e.classList.remove("show"),1800)}
-async function keepAwake(){try{if("wakeLock"in navigator&&!wakeLock)wakeLock=await navigator.wakeLock.request("screen")}catch{}}
-function releaseAwake(){if(wakeLock){wakeLock.release().catch(()=>{});wakeLock=null}}
-document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"&&timers.running)keepAwake()});
+function persist(){localStorage.setItem(TKEY,JSON.stringify(timers))}
 function now(){return Date.now()}
 function workSeconds(){return timers.elapsed+(timers.running&&timers.lastTick?Math.max(0,(now()-timers.lastTick)/1000):0)}
 function remain(end,fallback){return end?Math.max(0,(end-now())/1000):fallback}
 function fmt(s){s=Math.max(0,Math.floor(s));return String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0")}
-function start(){if(timers.running)return;timers.running=true;timers.lastTick=now();timers.limitEnd=timers.limitEnd||now()+900000;persistTimers();keepAwake();drawTimers()}
-function beginRest(){if(!timers.running)return;timers.restEnd=now()+60000;persistTimers();drawTimers()}
-function stop(){if(!timers.running)return;if(!confirm("Stop and end this workout?"))return;releaseAwake();timers={elapsed:0,lastTick:null,running:false,limitEnd:null,restEnd:null};persistTimers();drawTimers();toast("Workout ended")}
+function toast(s){const e=document.getElementById("toast");if(!e)return;e.textContent=s;e.classList.add("show");clearTimeout(window.__toast);window.__toast=setTimeout(()=>e.classList.remove("show"),1800)}
+async function keepAwake(){try{if("wakeLock"in navigator&&!wakeLock)wakeLock=await navigator.wakeLock.request("screen")}catch{}}
+function releaseAwake(){if(wakeLock){wakeLock.release().catch(()=>{});wakeLock=null}}
+function start(){if(timers.running)return;timers.running=true;timers.lastTick=now();timers.limitEnd=timers.limitEnd||now()+900000;persist();keepAwake();drawTimers()}
+function beginRest(){if(!timers.running)return;timers.restEnd=now()+60000;persist();drawTimers()}
+function stop(){if(!timers.running)return;if(!confirm("Stop and end this workout?"))return;releaseAwake();timers={elapsed:0,lastTick:null,running:false,limitEnd:null,restEnd:null};persist();drawTimers();toast("Workout ended")}
 function main(){if(!timers.running)start();else if(!timers.restEnd)beginRest()}
-function resetLimit(){timers.limitEnd=timers.running?now()+900000:null;persistTimers();drawTimers();toast("15-minute timer reset")}
-function resetRest(){timers.restEnd=null;persistTimers();drawTimers();toast("Rest timer reset")}
+function resetLimit(){timers.limitEnd=timers.running?now()+900000:null;persist();drawTimers();toast("15-minute timer reset")}
+function resetRest(){timers.restEnd=null;persist();drawTimers();toast("Rest timer reset")}
 function drawTimers(){
  if(timers.running){timers.elapsed=workSeconds();timers.lastTick=now()}
  let l=remain(timers.limitEnd,900),r=remain(timers.restEnd,60);
- if(timers.limitEnd&&l<=0){timers.limitEnd=null;l=0;persistTimers()}
- if(timers.restEnd&&r<=0){timers.restEnd=null;r=60;persistTimers()}
+ if(timers.limitEnd&&l<=0){timers.limitEnd=null;l=0;persist()}
+ if(timers.restEnd&&r<=0){timers.restEnd=null;r=60;persist()}
  document.getElementById("workClock").textContent=fmt(workSeconds());
  document.getElementById("limitClock").textContent=fmt(l);
  document.getElementById("restClock").textContent=fmt(r);
@@ -68,76 +64,14 @@ function drawTimers(){
  b.className="primaryAction "+(!active?"start":resting?"resting":"rest");
  const stop=document.getElementById("stopBtn");stop.disabled=!active;stop.className="btn "+(active?"stop":"ghost");
 }
-const schedule={
-1:[["Press","Press","Calibrate load and technique"],["ABC","ABC","Calibrate load and technique"],["Press","Press","Calibrate load and technique"]],
-2:[["ABC","ABC","Calibrate load and technique"],["Press","Press","Calibrate load and technique"],["ABC","ABC","Calibrate load and technique"]],
-3:[["Press","Press","Build from prior work"],["ABC","ABC","15–20 rounds"],["Press","Press","Hardest session of the week"]],
-4:[["ABC","ABC","Medium/light; progress only if sustainable"],["Press","Press","Hardest session of the week"],["ABC","ABC","Medium/light"]],
-5:[["Press","Press","Build from prior work"],["ABC","ABC","20–25 rounds"],["Press","Press","Hardest session; reduce afterward"]],
-6:[["ABC","ABC","Medium/light; progress only if sustainable"],["Press","Press","Hardest session of the week"],["ABC","ABC","Medium/light"]],
-7:[["Press","Press","3 × 2-3-5-10 or, if heavier, 5 × 2-3-5"],["ABC","ABC","GOAL: 30 rounds"],["Press","Press","2 × 2-3-5-10 or 3–4 × 2-3-5"]],
-8:[["ABC","ABC","About 15 rounds"],["Press","Press","GOAL: 100 reps — 5 × 2-3-5-10 or 10 × 2-3-5"],["ABC","ABC","About 20 rounds"]]
-};
-function dayInfo(){const s=new Date(data.startDate+"T00:00:00"),d=new Date();d.setHours(0,0,0,0);const n=Math.max(0,Math.floor((d-s)/86400000));return{week:Math.min(8,Math.floor(n/7)+1),day:n%7+1}}
-function plan(){const x=dayInfo();return{...x,p:schedule[x.week][Math.min(2,x.day-1)]}}
-function total(type,r,e){return(type==="ABC"?r*6:r*20)+e}
-function entryFor(type,w,d){const x=data.logs.find(v=>v.key===w+"-"+d);return x?.[type.toLowerCase()]||null}
-function form(type,w,d,existing){
- const x=existing||{},variant=x.variant||"Double",left=x.left||20,right=x.right||20,rounds=x.rounds??0,extra=x.extra??0;
- return '<section class="movement" data-type="'+type+'"><div class="movementTitle"><h3>'+type+'</h3><span class="pill">'+(type==="ABC"?"2 cleans · 1 press · 3 squats":"2-3-5-10 ladder")+'</span></div>'+
- '<div class="note">'+(type==="ABC"?"6 reps per round. ":"20 reps per full ladder. ")+((w>=7&&type==="ABC")?"Goal week: 30 rounds.":(w>=7&&type==="Press"?"Goal week: 100 reps.":"Log the work you actually complete."))+'</div>'+
- '<div class="field" style="margin-top:9px"><label>EXECUTION</label></div><div class="seg"><button type="button" data-v="Double" class="'+(variant==="Double"?"on":"")+'">Double</button><button type="button" data-v="Single" class="'+(variant==="Single"?"on":"")+'">Single</button><button type="button" data-v="Offset" class="'+(variant==="Offset"?"on":"")+'">Offset</button></div>'+
- '<div class="field"><label>KETTLEBELLS</label></div><div class="bells"><button type="button" data-w="20" class="'+(left==20?"on":"")+'">20 lb</button><button type="button" data-w="30" class="'+(left==30?"on":"")+'">30 lb</button><button type="button" data-w="40" class="'+(left==40?"on":"")+'">40 lb</button></div>'+
- '<div class="bellRow"><div class="field"><label>LEFT BELL</label><select data-field="left"><option '+(left==20?"selected":"")+'>20</option><option '+(left==30?"selected":"")+'>30</option><option '+(left==40?"selected":"")+'>40</option></select></div><div class="field"><label>RIGHT BELL</label><select data-field="right"><option '+(right==20?"selected":"")+'>20</option><option '+(right==30?"selected":"")+'>30</option><option '+(right==40?"selected":"")+'>40</option></select></div></div>'+
- '<div class="logGrid" style="margin-top:8px"><div class="field"><label>ROUNDS</label><div class="stepper"><button type="button" data-step="rounds" data-delta="-1">−</button><strong data-field="rounds">'+rounds+'</strong><button type="button" data-step="rounds" data-delta="1">+</button></div></div><div class="field"><label>EXTRA REPS</label><div class="stepper"><button type="button" data-step="extra" data-delta="-1">−</button><strong data-field="extra">'+extra+'</strong><button type="button" data-step="extra" data-delta="1">+</button></div></div><div class="field"><label>RPE</label><select data-field="rpe"><option value="">—</option>'+Array.from({length:10},(_,i)=>'<option '+(Number(x.rpe)===i+1?"selected":"")+'>'+(i+1)+'</option>').join("")+'</select></div><div class="field"><label>TIME</label><input data-field="time" value="'+(x.time||"")+'" placeholder="e.g. 12:40"></div><div class="field wide"><label>NOTES</label><input data-field="notes" value="'+(x.notes||"")+'" placeholder="Optional"></div></div>'+
- '<div class="summary"><span>Total reps</span><strong data-total>'+total(type,rounds,extra)+'</strong></div><button type="button" class="btn saveBtn" data-save="'+type+'">'+(x.saved?"UPDATE":"LOG "+type)+'</button></section>'
-}
-function renderToday(){
- const q=plan(),both=false,old=entryFor(q.p[1],q.week,q.day);
- document.getElementById("todayView").innerHTML='<div class="todayHead"><span class="week">WEEK '+q.week+' · DAY '+q.day+'</span><span class="pill '+(q.week>=7?"goal":"")+'">'+(q.week>=7?"GOAL WEEK":"TODAY")+'</span></div>'+
- '<section class="section"><h2>'+q.p[0]+'</h2><div class="note">'+q.p[2]+'</div>'+form(q.p[1],q.week,q.day,old)+'</section>';
-}
-function renderProgress(){
- const logs=data.logs.flatMap(x=>["press","abc"].filter(k=>x[k]).map(k=>({...x[k],date:x.date,key:x.key,type:k.toUpperCase()}))).sort((a,b)=>b.date.localeCompare(a.date));
- const sessions=logs.length,bestABC=Math.max(0,...logs.filter(x=>x.type==="ABC").map(x=>x.rounds)),bestPress=Math.max(0,...logs.filter(x=>x.type==="PRESS").map(x=>x.total)),weights=Math.max(0,...logs.map(x=>Math.max(x.left||0,x.right||0)));
- document.getElementById("progressView").innerHTML='<section class="section"><h2>Progress</h2><div class="statGrid"><div class="stat"><span>SESSIONS</span><b>'+sessions+'</b></div><div class="stat"><span>BEST ABC</span><b>'+bestABC+' rounds</b></div><div class="stat"><span>BEST PRESS</span><b>'+bestPress+' reps</b></div><div class="stat"><span>HEAVIEST BELL</span><b>'+weights+' lb</b></div></div></section>'+
- '<section class="section"><h2>History</h2>'+(logs.length?logs.map((x,i)=>'<div class="historyItem"><div class="dateBox">'+x.date.slice(5)+'</div><div><b>'+x.type+'</b><small>'+x.rounds+' rounds · '+x.total+' reps · '+Math.max(x.left||0,x.right||0)+' lb'+(x.rpe?" · RPE "+x.rpe:"")+'</small></div><button type="button" class="btn danger" data-delete="'+x.key+'|'+x.type.toLowerCase()+'">×</button></div>').join(""):'<div class="empty">No workouts logged yet.</div>')+'</section>';
-}
-function renderProgram(){
- const cw=dayInfo().week;
- document.getElementById("programView").innerHTML='<section class="section"><h2>Program</h2>'+
- '<div class="statGrid">'+
- '<div class="stat"><span>PRESS</span><b>2-3-5-10</b><small>Goal: 100 reps</small></div>'+
- '<div class="stat"><span>ABC</span><b>2 · 1 · 3</b><small>Goal: 30 rounds</small></div>'+
- '</div>'+
- '<div class="note" style="margin-top:10px"><b>Weeks 1–2:</b> Press ↔ ABC · one movement per day.</div>'+
- '<div class="note" style="margin-top:8px"><b>Press:</b> Double · Alternating · See-Saw · Touch-Down<br><b>ABC:</b> Standard · Single / Offset</div>'+
- '</section>'+
- Object.entries(schedule).map(([w,days])=>'<details class="programWeek" '+(Number(w)===cw?"open":"")+'><summary>Week '+w+(w>=7?" — GOAL WEEK":"")+'</summary><div class="days">'+days.map((p,i)=>'<div class="day"><b>Day '+(i+1)+' · '+p[0]+'</b><br><span class="muted">'+p[2]+'</span></div>').join("")+'</div></details>').join("");
-}
-function renderAll(){renderToday();renderProgress();renderProgram()}
-function saveMovement(type,section){
- const g=n=>section.querySelector('[data-field="'+n+'"]'),q=plan(),key=q.week+"-"+q.day;
- let row=data.logs.find(x=>x.key===key);if(!row){row={key,date:new Date().toISOString().slice(0,10)};data.logs.push(row)}
- row[type.toLowerCase()]={type,variant:section.querySelector(".seg .on")?.dataset.v||"Double",left:Number(g("left").value),right:Number(g("right").value),rounds:Number(section.querySelector('[data-field="rounds"]').textContent),extra:Number(section.querySelector('[data-field="extra"]').textContent),total:total(type,Number(section.querySelector('[data-field="rounds"]').textContent),Number(section.querySelector('[data-field="extra"]').textContent)),rpe:g("rpe").value?Number(g("rpe").value):null,time:g("time").value,notes:g("notes").value,saved:true};
- persist();renderAll();toast(type+" saved");
-}
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"&&timers.running)keepAwake()});
 document.addEventListener("click",e=>{
- const t=e.target.closest("button");if(!t)return;
- if(t.id==="mainBtn")return main();if(t.id==="stopBtn")return stop();if(t.id==="limitReset")return resetLimit();if(t.id==="restReset")return resetRest();
- if(t.dataset.tab){["today","progress","program"].forEach(k=>document.getElementById(k+"View").classList.toggle("hidden",k!==t.dataset.tab));document.querySelectorAll(".tabs button").forEach(b=>b.classList.toggle("on",b.dataset.tab===t.dataset.tab));return}
- if(t.dataset.step){const f=t.closest(".movement"),el=f.querySelector('[data-field="'+t.dataset.step+'"]'),max=t.dataset.step==="rounds"?35:100;el.textContent=Math.max(0,Math.min(max,Number(el.textContent)+Number(t.dataset.delta)));f.querySelector("[data-total]").textContent=total(f.dataset.type,Number(f.querySelector('[data-field="rounds"]').textContent),Number(f.querySelector('[data-field="extra"]').textContent));return}
- if(t.dataset.v){t.parentElement.querySelectorAll("button").forEach(b=>b.classList.remove("on"));t.classList.add("on");return}
- if(t.dataset.w){const f=t.closest(".movement");f.querySelector('[data-field="left"]').value=t.dataset.w;f.querySelector('[data-field="right"]').value=t.dataset.w;f.querySelectorAll(".bells button").forEach(b=>b.classList.toggle("on",b.dataset.w===t.dataset.w));return}
- if(t.dataset.save)return saveMovement(t.dataset.save,t.closest(".movement"));
- if(t.dataset.delete){const [key,type]=t.dataset.delete.split("|");if(confirm("Delete this logged workout?")){const row=data.logs.find(x=>x.key===key);if(row)delete row[type];data.logs=data.logs.filter(x=>x.press||x.abc);persist();renderAll();toast("Workout deleted")}}
+ const b=e.target.closest("button");if(!b)return;
+ if(b.id==="mainBtn")main();else if(b.id==="stopBtn")stop();else if(b.id==="limitReset")resetLimit();else if(b.id==="restReset")resetRest();
 });
-document.addEventListener("change",e=>{
- if(e.target.matches('[data-field="rounds"],[data-field="extra"]')){const f=e.target.closest(".movement");f.querySelector("[data-total]").textContent=total(f.dataset.type,Number(f.querySelector('[data-field="rounds"]').textContent),Number(f.querySelector('[data-field="extra"]').textContent))}
-});
-renderAll();drawTimers();setInterval(drawTimers,250);
+drawTimers();setInterval(drawTimers,250);
 if("serviceWorker"in navigator)navigator.serviceWorker.register("./sw.js").catch(()=>{});
 })();
 </script>
-<script src="./day-picker.js?v=c4b4a2844b8b2a798b0822237ac22f9050962b81"></script></body>
+<script src="./day-picker.js"></script></body>
 </html>

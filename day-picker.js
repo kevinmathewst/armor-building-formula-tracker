@@ -160,9 +160,16 @@ function renderProgress(){
         <div class="dateBox">${esc(String(x.date).slice(5))}</div>
         <div><b>${x.type}</b><small>${x.rounds||0} rounds · ${x.total||0} reps · ${Math.max(x.left||0,x.right||0)} lb${x.rpe?' · RPE '+x.rpe:''}<br>${esc(x.guide||'')} · ${esc(x.setup||'')}</small></div>
         <button type="button" class="btn danger" data-delete="${esc(x.key+'|'+x.type.toLowerCase())}">×</button>
-      </div>`).join(''):'<div class="empty">No workouts logged yet.</div>'}</section>`;
+      </div>`).join(''):'<div class="empty">No workouts logged yet.</div>'}</section>
+    <section class="section"><h2>Data & Backup</h2>
+      <div class="note">Your workouts stay on this device. Export a backup to Files/iCloud Drive periodically; import it if you ever need to restore the log.</div>
+      <div class="backupRow"><button type="button" id="exportBackup">EXPORT BACKUP</button><button type="button" id="importBackup">IMPORT BACKUP</button></div>
+      <input id="backupFile" type="file" accept=".json,application/json" hidden>
+    </section>`;
+  document.getElementById('exportBackup').addEventListener('click',exportBackup);
+  document.getElementById('importBackup').addEventListener('click',()=>document.getElementById('backupFile').click());
+  document.getElementById('backupFile').addEventListener('change',importBackup);
 }
-
 function renderProgram(){
   const host=document.getElementById('programView'),p=currentPlan(read());
   host.innerHTML=`
@@ -177,11 +184,7 @@ function renderProgram(){
     <section class="section"><h2>Weeks</h2>
       ${Object.entries(schedule).map(([w,days])=>`<details class="programWeek" ${Number(w)===p.week?'open':''}><summary>Week ${w}${w>=7?' — GOAL WEEK':''}</summary><div class="days">${days.map((x,i)=>`<div class="day"><b>Day ${i+1} · ${x[0]}</b><br><span class="muted">${esc(x[1])}</span></div>`).join('')}</div></details>`).join('')}
     </section>
-    <section class="section"><h2>Data</h2>
-      <div class="note">Your workouts stay on this device. Export a backup to Files/iCloud Drive periodically; import it if you ever need to restore the log.</div>
-      <div class="backupRow"><button type="button" id="exportBackup">EXPORT BACKUP</button><button type="button" id="importBackup">IMPORT BACKUP</button></div>
-      <input id="backupFile" type="file" accept=".json,application/json" hidden>
-    </section>
+
     <section class="section"><h2>About</h2>
       <div class="note"><b>Created by Kevin Tharakan</b><br>Independent training tracker based on Dan John’s <i>The Armor Building Formula</i>.<br>This app is not affiliated with Dan John.</div>
     </section>`;

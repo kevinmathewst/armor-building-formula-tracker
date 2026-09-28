@@ -181,6 +181,9 @@ function renderProgram(){
       <div class="note">Your workouts stay on this device. Export a backup to Files/iCloud Drive periodically; import it if you ever need to restore the log.</div>
       <div class="backupRow"><button type="button" id="exportBackup">EXPORT BACKUP</button><button type="button" id="importBackup">IMPORT BACKUP</button></div>
       <input id="backupFile" type="file" accept=".json,application/json" hidden>
+    </section>
+    <section class="section"><h2>About</h2>
+      <div class="note"><b>Created by Kevin Tharakan</b><br>Independent training tracker based on Dan John’s <i>The Armor Building Formula</i>.<br>This app is not affiliated with Dan John.</div>
     </section>`;
   document.getElementById('exportBackup').addEventListener('click',exportBackup);
   document.getElementById('importBackup').addEventListener('click',()=>document.getElementById('backupFile').click());

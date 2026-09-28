@@ -173,45 +173,12 @@ function renderToday(){
   bindToday();
 }
 
-function bindToday(){
-  const host=document.getElementById('todayView'),movement=host.querySelector('.movement');
-  const p=currentPlan(read());
-  host.querySelector('[data-field="setup"]').addEventListener('change',e=>{
-    const d=read(),type=movement.dataset.type,x=getEntry(d,p.week,p.day,type);
-    const setup=e.target.value;
-    host.querySelector('[data-field="guide"]').innerHTML=guideOptions(type,setup).map(o=>`<option value="${esc(o[0])}">${esc(o[1])}</option>`).join('');
-    const guide=guideOptions(type,setup)[0][0];
-    host.querySelector('[data-field="guide"]').value=guide;
-    host.querySelector('#guideWrap').innerHTML=guideHTML(type,guide);
-    host.querySelector('#setupWrap').innerHTML=setupControls(setup,x.left||20,x.right??20);
-  });
-  host.querySelector('[data-field="guide"]').addEventListener('change',e=>{
-    host.querySelector('#guideWrap').innerHTML=guideHTML(movement.dataset.type,e.target.value);
-  });
-  host.querySelectorAll('[data-step]').forEach(b=>b.addEventListener('click',()=>{
-    const f=movement.querySelector('[data-field="'+b.dataset.step+'"]');
-    const max=b.dataset.step==='rounds'?35:100;
-    f.textContent=Math.max(0,Math.min(max,Number(f.textContent)+Number(b.dataset.delta)));
-    updateTotal(movement);
-  }));
-  host.querySelector('#pickerSave').addEventListener('click',save);
-}
-
-function updateTotal(m){m.querySelector('[data-total]').textContent=total(m.dataset.type,Number(m.querySelector('[data-field="rounds"]').textContent),Number(m.querySelector('[data-field="extra"]').textContent))}
-
-function save(){
-  const d=read(),p=currentPlan(d),m=document.querySelector('#todayView .movement'),type=m.dataset.type;
-  const setup=m.querySelector('[data-field="setup"]').value,guide=m.querySelector('[data-field="guide"]').value;
-  let left=20,right=20;
-  if(setup==='Single'){left=Number(m.querySelector('[data-field="singleBell"]').value);right=0}
-  else if(setup==='Offset'){left=Number(m.querySelector('[data-field="left"]').value);right=Number(m.querySelector('[data-field="right"]').value)}
-  else {left=Number(m.querySelector('[data-field="doubleBell"]').value);right=left}
-  const rounds=Number(m.querySelector('[data-field="rounds"]').textContent)||0,extra=Number(m.querySelector('[data-field="extra"]').textContent)||0;
-  let row=d.logs.find(x=>x.key===`${p.week}-${p.day}`);
-  if(!row){row={key:`${p.week}-${p.day}`,date:localDate()};d.logs.push(row)}
-  row.date=document.getElementById('exerciseDate')?.value||row.date||localDate();
-  row[type.toLowerCase()]={type,setup,guide,left,right,rounds,extra,total:total(type,rounds,extra),rpe:m.querySelector('[data-field="rpe"]').value?Number(m.querySelector('[data-field="rpe"]').value):null,time:m.querySelector('[data-field="time"]').value,notes:m.querySelector('[data-field="notes"]').value,saved:true};
-  write(d);renderProgress();renderToday();toast('Saved '+type);
+function updateTotal(m){
+  m.querySelector('[data-total]').textContent=total(
+    m.dataset.type,
+    Number(m.querySelector('[data-field="rounds"]').textContent),
+    Number(m.querySelector('[data-field="extra"]').textContent)
+  );
 }
 
 function renderProgress(){
@@ -363,6 +330,7 @@ function saveWorkout(target,type){
   if(setup==='Single'){left=Number(m.querySelector('[data-field="singleBell"]').value);right=0}
   else if(setup==='Offset'){left=Number(m.querySelector('[data-field="left"]').value);right=Number(m.querySelector('[data-field="right"]').value)}
   else {left=Number(m.querySelector('[data-field="doubleBell"]').value);right=left}
+  if(setup==='Offset'&&left===right){toast('Offset setup needs two different weights');return}
   const rounds=Number(m.querySelector('[data-field="rounds"]').textContent)||0,extra=Number(m.querySelector('[data-field="extra"]').textContent)||0;
   let row=d.logs.find(x=>x.key===`${target.week}-${target.day}`);
   if(!row){row={key:`${target.week}-${target.day}`,date:localDate()};d.logs.push(row)}

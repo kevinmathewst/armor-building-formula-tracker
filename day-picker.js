@@ -103,17 +103,17 @@ function injectStyle(){
   const s=document.createElement('style');
   s.id='dayPickerStyle';
   s.textContent=`
-    .dayPicker{background:#fff;border:1px solid #e2e5eb;border-radius:20px;padding:14px 16px;margin:10px 0;box-shadow:0 4px 18px #17233b09}
-    .dayPickerTitle{font-size:10px;font-weight:900;letter-spacing:.14em;color:#687386;margin-bottom:8px}
+    .dayPicker{background:#fff;border:1px solid #e1e4e9;border-radius:20px;padding:14px 16px;margin:10px 0;box-shadow:0 4px 18px #20242b09}
+    .dayPickerTitle{font-size:10px;font-weight:900;letter-spacing:.14em;color:#64748b;margin-bottom:8px}
     .dayPickerGrid,.dateTimeGrid,.bellRow,.logGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-    .dayPicker select,.dayPicker input,.movement select,.movement input{width:100%;border:1px solid #d8dce4;border-radius:10px;padding:9px;background:#fff;color:#17233b}
-    .selectedPlan{margin-top:9px;background:#f2f3f7;border-radius:12px;padding:9px 11px;font-size:12px;color:#596579}
-    .pickerActions{display:flex;gap:8px;margin-top:9px}.pickerActions button{flex:1;border:0;border-radius:10px;padding:10px;font-weight:900;background:#eef0f5;color:#17233b}
-    .guideBox{margin:10px 0;border:1px solid #dfe3ea;border-radius:14px;overflow:hidden;background:#f8f9fb}
-    .guideText{padding:11px 12px;color:#17233b;font-size:13px;line-height:1.4}
+    .dayPicker select,.dayPicker input,.movement select,.movement input{width:100%;border:1px solid #d7dbe2;border-radius:10px;padding:9px;background:#fff;color:#20242b}
+    .selectedPlan{margin-top:9px;background:#f4f5f7;border-radius:12px;padding:9px 11px;font-size:12px;color:#64748b}
+    .pickerActions{display:flex;gap:8px;margin-top:9px}.pickerActions button{flex:1;border:0;border-radius:10px;padding:10px;font-weight:900;background:#eef2f7;color:#20242b}
+    .guideBox{margin:10px 0;border:1px solid #dfe3e8;border-radius:14px;overflow:hidden;background:#f7f8fa}
+    .guideText{padding:11px 12px;color:#20242b;font-size:13px;line-height:1.4}
     .backupRow{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
-    .backupRow button{border:1px solid #d8dce4;border-radius:10px;padding:10px;background:#fff;color:#17233b;font-weight:850}
-    .muted{color:#687386}
+    .backupRow button{border:1px solid #d7dbe2;border-radius:10px;padding:10px;background:#fff;color:#20242b;font-weight:850}
+    .muted{color:#64748b}
     @media(max-width:300px){
       .dayPicker{border-radius:11px;padding:7px;margin:4px 0}.dayPickerTitle{font-size:6px}
       .dayPicker select,.dayPicker input,.movement select,.movement input{padding:5px;font-size:8px}

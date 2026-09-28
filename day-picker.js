@@ -56,6 +56,11 @@ function write(d){
   localStorage.setItem(DATA_KEY,JSON.stringify(d));
   try{localStorage.setItem(BACKUP_KEY,JSON.stringify({schema:SCHEMA,savedAt:new Date().toISOString(),data:d}))}catch{}
 }
+function toast(s){
+  const e=document.getElementById('toast');if(!e)return;
+  e.textContent=s;e.classList.add('show');clearTimeout(window.__abfToast);
+  window.__abfToast=setTimeout(()=>e.classList.remove('show'),1800);
+}
 function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
 function pad(n){return String(n).padStart(2,'0')}
 function localDate(){const d=new Date();return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`}
@@ -106,7 +111,6 @@ function injectStyle(){
     .pickerActions{display:flex;gap:8px;margin-top:9px}.pickerActions button{flex:1;border:0;border-radius:10px;padding:10px;font-weight:900;background:#eef0f5;color:#17233b}
     .guideBox{margin:10px 0;border:1px solid #dfe3ea;border-radius:14px;overflow:hidden;background:#f8f9fb}
     .guideText{padding:11px 12px;color:#17233b;font-size:13px;line-height:1.4}
-    .guideTotal{padding:9px 12px;background:#243f80;color:#fff;font-size:11px;font-weight:900}
     .backupRow{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
     .backupRow button{border:1px solid #d8dce4;border-radius:10px;padding:10px;background:#fff;color:#17233b;font-weight:850}
     .muted{color:#687386}
@@ -115,7 +119,7 @@ function injectStyle(){
       .dayPicker select,.dayPicker input,.movement select,.movement input{padding:5px;font-size:8px}
       .selectedPlan{font-size:8px;padding:5px}.dayPickerGrid,.dateTimeGrid,.bellRow,.logGrid{gap:4px}
       .pickerActions{gap:4px;margin-top:5px}.pickerActions button,.backupRow button{font-size:8px;padding:6px}
-      .guideText{font-size:8px;padding:6px}.guideTotal{font-size:7px;padding:5px}
+      .guideText{font-size:8px;padding:6px}
     }
   `;
   document.head.appendChild(s);
@@ -130,47 +134,6 @@ function setupControls(setup,left,right){
   if(setup==='Single')return`<div class="field"><label>BELL</label><select data-field="singleBell">${[20,30,40].map(w=>`<option value="${w}" ${left==w?'selected':''}>${w} lb</option>`).join('')}</select></div>`;
   if(setup==='Offset')return`<div class="bellRow"><div class="field"><label>LEFT BELL</label><select data-field="left">${[20,30,40].map(w=>`<option value="${w}" ${left==w?'selected':''}>${w} lb</option>`).join('')}</select></div><div class="field"><label>RIGHT BELL</label><select data-field="right">${[20,30,40].map(w=>`<option value="${w}" ${right==w?'selected':''}>${w} lb</option>`).join('')}</select></div></div>`;
   return`<div class="field"><label>BELLS</label><select data-field="doubleBell">${[20,30,40].map(w=>`<option value="${w}" ${left==w&&right==w?'selected':''}>${w} lb each</option>`).join('')}</select></div>`;
-}
-
-function renderToday(){
-  injectStyle();
-  const d=read(),p=currentPlan(d),type=schedule[p.week][p.day-1][0],note=schedule[p.week][p.day-1][1];
-  const x=getEntry(d,p.week,p.day,type),setup=x.setup||'Double',guide=selectedGuide(type,setup,x.guide);
-  const rounds=x.rounds??0,extra=x.extra??0;
-  const date=x.date||localDate(),time=x.time||'';
-  const goal=p.week>=7?(type==='ABC'?'Goal: 30 rounds':'Goal: 100 reps'):(type==='ABC'?'6 reps per round':'20 reps per ladder');
-  const guideOpts=guideOptions(type,setup);
-
-  document.getElementById('todayView').innerHTML=`
-    <div class="todayHead"><span class="week">WEEK ${p.week} · DAY ${p.day}</span><span class="pill ${p.week>=7?'goal':''}">${p.week>=7?'GOAL WEEK':'TODAY'}</span></div>
-    <section class="section">
-      <h2>${type}</h2>
-      <div class="note">${esc(note)} · ${goal}</div>
-      <div class="movement" data-type="${type}">
-        <div class="field"><label>KETTLEBELL SETUP</label>
-          <select data-field="setup">
-            <option value="Double" ${setup==='Double'?'selected':''}>Double — two matched bells</option>
-            <option value="Single" ${setup==='Single'?'selected':''}>Single — one bell</option>
-            <option value="Offset" ${setup==='Offset'?'selected':''}>Offset — two different weights</option>
-          </select>
-        </div>
-        <div class="field" style="margin-top:9px"><label>VISUAL GUIDE</label>
-          <select data-field="guide">${guideOpts.map(o=>`<option value="${esc(o[0])}" ${guide===o[0]?'selected':''}>${esc(o[1])}</option>`).join('')}</select>
-        </div>
-        <div id="guideWrap">${guideHTML(type,guide)}</div>
-        <div id="setupWrap">${setupControls(setup,x.left||20,x.right??20)}</div>
-        <div class="logGrid" style="margin-top:8px">
-          <div class="field"><label>ROUNDS</label><div class="stepper"><button type="button" data-step="rounds" data-delta="-1">−</button><strong data-field="rounds">${rounds}</strong><button type="button" data-step="rounds" data-delta="1">+</button></div></div>
-          <div class="field"><label>EXTRA REPS</label><div class="stepper"><button type="button" data-step="extra" data-delta="-1">−</button><strong data-field="extra">${extra}</strong><button type="button" data-step="extra" data-delta="1">+</button></div></div>
-          <div class="field"><label>RPE</label><select data-field="rpe"><option value="">—</option>${Array.from({length:10},(_,i)=>`<option value="${i+1}" ${Number(x.rpe)===i+1?'selected':''}>${i+1}</option>`).join('')}</select></div>
-          <div class="field"><label>TIME</label><input data-field="time" value="${esc(time)}" placeholder="e.g. 12:40"></div>
-          <div class="field wide"><label>NOTES</label><input data-field="notes" value="${esc(x.notes||'')}" placeholder="Optional"></div>
-        </div>
-        <div class="summary"><span>Total reps</span><strong data-total>${total(type,rounds,extra)}</strong></div>
-        <button type="button" class="btn saveBtn" id="pickerSave">${x.saved?'UPDATE':'LOG '+type}</button>
-      </div>
-    </section>`;
-  bindToday();
 }
 
 function updateTotal(m){

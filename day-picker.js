@@ -316,12 +316,6 @@ function setTab(tab){
   ['today','progress','program'].forEach(k=>document.getElementById(k+'View').classList.toggle('hidden',k!==tab));
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===tab));
 }
-function renderProgress(){
-  const host=document.getElementById('progressView');if(!host)return;
-  const d=read(),logs=d.logs.flatMap(x=>['press','abc'].filter(k=>x[k]).map(k=>({...migrate(x[k],k==='abc'?'ABC':'Press'),date:x.date,key:x.key,type:k.toUpperCase()}))).sort((a,b)=>String(b.date).localeCompare(String(a.date)));
-  const sessions=logs.length,bestABC=Math.max(0,...logs.filter(x=>x.type==='ABC').map(x=>x.rounds||0)),bestPress=Math.max(0,...logs.filter(x=>x.type==='PRESS').map(x=>x.total||0)),weights=Math.max(0,...logs.map(x=>Math.max(x.left||0,x.right||0)));
-  host.innerHTML=`<section class="section"><h2>Progress</h2><div class="statGrid"><div class="stat"><span>SESSIONS</span><b>${sessions}</b></div><div class="stat"><span>BEST ABC</span><b>${bestABC} rounds</b></div><div class="stat"><span>BEST PRESS</span><b>${bestPress} reps</b></div><div class="stat"><span>HEAVIEST BELL</span><b>${weights} lb</b></div></div></section><section class="section"><h2>History</h2>${logs.length?logs.map(x=>`<div class="historyItem"><div class="dateBox">${esc(String(x.date).slice(5))}</div><div><b>${x.type}</b><small>${x.rounds||0} rounds · ${x.total||0} reps · ${Math.max(x.left||0,x.right||0)} lb${x.rpe?' · RPE '+x.rpe:''}<br>${esc(x.guide||'')} · ${esc(x.setup||'')}</small></div><button type="button" class="btn danger" data-delete="${esc(x.key+'|'+x.type.toLowerCase())}">×</button></div>`).join(''):'<div class="empty">No workouts logged yet.</div>'}</section>`;
-}
 document.addEventListener('click',e=>{
   const b=e.target.closest('button');if(!b)return;
   if(b.dataset.tab){setTab(b.dataset.tab);return}

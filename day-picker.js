@@ -187,12 +187,22 @@ function renderProgram(){
   document.getElementById('backupFile').addEventListener('change',importBackup);
 }
 
-function exportBackup(){
-  const d=read(),payload={schema:SCHEMA,app:'Armor Building Formula',exportedAt:new Date().toISOString(),data:d};
-  const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
-  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='ABF-backup.json';a.click();
-  setTimeout(()=>URL.revokeObjectURL(a.href),1000);toast('Backup exported');
+async function exportBackup(){
+  const payload={schema:SCHEMA,app:'Armor Building Formula',exportedAt:new Date().toISOString(),data:read()};
+  const text=JSON.stringify(payload,null,2),file=new File([text],'ABF-backup.json',{type:'application/json'});
+  try{
+    if(navigator.canShare&&navigator.canShare({files:[file]})){
+      await navigator.share({title:'ABF Backup',files:[file]});
+      toast('Backup ready');
+      return;
+    }
+  }catch(e){
+    if(e?.name==='AbortError')return;
+  }
+  const url=URL.createObjectURL(file),a=document.createElement('a');
+  a.href=url;a.download=file.name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);toast('Backup exported');
 }
+
 function importBackup(e){
   const file=e.target.files?.[0];if(!file)return;
   const reader=new FileReader();

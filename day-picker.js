@@ -1,54 +1,430 @@
 (()=>{
 'use strict';
+
 const DATA_KEY='abf_data_v3';
+const BACKUP_KEY='abf_backup_v3';
+const SCHEMA=4;
+
 const schedule={
-1:[['Press','Calibrate load and technique'],['ABC','Calibrate load and technique'],['Press','Calibrate load and technique']],
-2:[['ABC','Calibrate load and technique'],['Press','Calibrate load and technique'],['ABC','Calibrate load and technique']],
-3:[['Press','Build from prior work'],['ABC','15–20 rounds'],['Press','Hardest session of the week']],
-4:[['ABC','Medium/light; progress only if sustainable'],['Press','Hardest session of the week'],['ABC','Medium/light']],
-5:[['Press','Build from prior work'],['ABC','20–25 rounds'],['Press','Hardest session; reduce afterward']],
-6:[['ABC','Medium/light; progress only if sustainable'],['Press','Hardest session of the week'],['ABC','Medium/light']],
-7:[['Press','3 × 2-3-5-10 or, if heavier, 5 × 2-3-5'],['ABC','GOAL: 30 rounds'],['Press','2 × 2-3-5-10 or 3–4 × 2-3-5']],
-8:[['ABC','About 15 rounds'],['Press','GOAL: 100 reps — 5 × 2-3-5-10 or 10 × 2-3-5'],['ABC','About 20 rounds']]
+  1:[['Press','Calibrate load and technique'],['ABC','Calibrate load and technique'],['Press','Calibrate load and technique']],
+  2:[['ABC','Calibrate load and technique'],['Press','Calibrate load and technique'],['ABC','Calibrate load and technique']],
+  3:[['Press','Build from prior work'],['ABC','15–20 rounds'],['Press','Hardest session of the week']],
+  4:[['ABC','Medium/light; progress only if sustainable'],['Press','Hardest session of the week'],['ABC','Medium/light']],
+  5:[['Press','Build from prior work'],['ABC','20–25 rounds'],['Press','Hardest session; reduce afterward']],
+  6:[['ABC','Medium/light; progress only if sustainable'],['Press','Hardest session of the week'],['ABC','Medium/light']],
+  7:[['Press','3 × 2-3-5-10 or, if heavier, 5 × 2-3-5'],['ABC','GOAL: 30 rounds'],['Press','2 × 2-3-5-10 or 3–4 × 2-3-5']],
+  8:[['ABC','About 15 rounds'],['Press','GOAL: 100 reps — 5 × 2-3-5-10 or 10 × 2-3-5'],['ABC','About 20 rounds']]
 };
-function read(){try{return JSON.parse(localStorage.getItem(DATA_KEY))||{logs:[]}}catch{return{logs:[]}}}
-function write(d){localStorage.setItem(DATA_KEY,JSON.stringify(d));try{localStorage.setItem('abf_backup_v3',JSON.stringify({schema:3,savedAt:new Date().toISOString(),data:d}))}catch{}}
-function esc(s){return String(s??'').replace(/[&<>\"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[m]))}
+
+const pressGuides={
+  'Double KB Press':{
+    title:'Double KB Press',
+    text:'Rack both bells. Press both overhead together. Lower to the rack and repeat.'
+  },
+  'Alternating KB Press':{
+    title:'Alternating KB Press',
+    text:'Rack both bells. Press one overhead, lower it, then press the other. Alternate sides.'
+  },
+  'See-Saw KB Press':{
+    title:'See-Saw KB Press',
+    text:'Rack both bells. As one bell goes up, the other comes down. Alternate continuously.'
+  },
+  'Touch-Down KB Press':{
+    title:'Touch-Down KB Press',
+    text:'Start with both bells overhead. Lower one to the shoulder, press it back to lockout, then alternate.'
+  }
+};
+
+const abcGuides={
+  bilateral:{
+    title:'ABC — Two-Bell Bilateral',
+    text:'Clean both bells to the rack. Press both overhead once. Front squat three times. Repeat.'
+  },
+  alternating:{
+    title:'ABC — Single / Offset-Load Alternating',
+    text:'Left clean & press → switch → right clean & press → right front squat ×2 → bells down/shake → reverse: right clean & press → switch → left clean & press → left front squat ×2.'
+  }
+};
+
+function read(){
+  try{
+    const d=JSON.parse(localStorage.getItem(DATA_KEY));
+    return d&&Array.isArray(d.logs)?d:{startDate:localDate(),logs:[]};
+  }catch{return{startDate:localDate(),logs:[]}}
+}
+function write(d){
+  localStorage.setItem(DATA_KEY,JSON.stringify(d));
+  try{localStorage.setItem(BACKUP_KEY,JSON.stringify({schema:SCHEMA,savedAt:new Date().toISOString(),data:d}))}catch{}
+}
+function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
 function pad(n){return String(n).padStart(2,'0')}
 function localDate(){const d=new Date();return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`}
-function total(type,r,e){return(type==='ABC'?r*6:r*20)+e}
-let selected={week:1,day:1};
-function injectStyle(){if(document.getElementById('dayPickerStyle'))return;const s=document.createElement('style');s.id='dayPickerStyle';s.textContent=`
-.visualGuide{margin-top:12px;border:1px solid #dfe3ea;border-radius:16px;overflow:hidden;background:#fff}.visualGuide summary{list-style:none;cursor:pointer;padding:12px 14px;background:#eef1f6;color:#17233b;font-size:12px;font-weight:900;letter-spacing:.06em}.visualGuide summary::-webkit-details-marker{display:none}.guideSub{padding:10px 14px;background:#f7f8fa;color:#596579;font-size:12px;font-style:italic;line-height:1.35}.guideSteps{padding:0 14px}.guideStep{padding:10px 0;border-bottom:1px solid #e6e8ed;color:#17233b;font-size:13px;line-height:1.3}.guideTotal{padding:10px 14px;background:#243f80;color:#fff;font-size:12px;font-weight:900}..dayPicker{background:#fff;border:1px solid #e2e5eb;border-radius:20px;padding:14px 16px;margin:10px 0;box-shadow:0 4px 18px #17233b09}.dayPickerTitle{font-size:10px;font-weight:900;letter-spacing:.14em;color:#687386;margin-bottom:8px}.dayPickerGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.dayPicker select{width:100%;border:1px solid #d8dce4;border-radius:10px;padding:10px;background:#fff;color:#17233b;font-weight:800}.selectedPlan{margin-top:9px;background:#f2f3f7;border-radius:12px;padding:9px 11px;font-size:12px;color:#596579}.dateTimeGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}.dayPicker input{width:100%;border:1px solid #d8dce4;border-radius:10px;padding:9px;background:#fff;color:#17233b}.pickerActions{display:flex;gap:8px;margin-top:9px}.pickerActions button{flex:1;border:0;border-radius:10px;padding:10px;font-weight:900;background:#eef0f5;color:#17233b}@media(max-width:300px){.dayPicker{border-radius:11px;padding:7px;margin:4px 0}.dayPickerTitle{font-size:6px}.dayPicker select,.dayPicker input{padding:5px;font-size:8px}.selectedPlan{font-size:8px;padding:5px}.dateTimeGrid,.dayPickerGrid{gap:4px}.pickerActions{gap:4px;margin-top:5px}.pickerActions button{font-size:8px;padding:6px}}
-`;document.head.appendChild(s)}
-function guideData(type,variant){
- if(type==='ABC'){
-  return variant==='Double'?{title:'ABC — Two-Bell Bilateral',sub:'Two kettlebells, same weight, both hands move together.',steps:['1. Double Clean ×2 (both bells)','2. Double Press ×1 (both bells)','3. Double Front Squat ×3 (both bells)','4. Rest, repeat'],total:'Round total: 2 Cleans · 1 Press · 3 Front Squats'}:{title:'ABC — Single / Offset-Load Alternating',sub:'One bell alternating hands, or two different-weight bells. A single bell is the offset case where the other side is 0 lb.',steps:['1. Left-hand Clean & Press','2. Switch hands','3. Right-hand Clean & Press','4. Right-hand Front Squat ×2','5. Bell(s) down — shake out','6. Right-hand Clean & Press','7. Switch hands','8. Left-hand Clean & Press','9. Left-hand Front Squat ×2','10. Bell(s) down'],total:'One round: 4 Cleans · 4 Presses · 4 Front Squats'};
- }
- const map={
-  Double:{title:'Double KB Press',sub:'Two bells, pressed together. Works matched or offset-loaded.',steps:['1. Rack both bells at shoulders','2. Press both overhead together, strict — no leg drive','3. Lower under control','4. Repeat'],total:'Reps as prescribed (e.g. 2-3-5-10 ladder)'},
-  Single:{title:'Alternating KB Press',sub:'Works with one bell switching hands, or two bells alternating.',steps:['1. Rack both bells (or one bell)','2. Press right overhead','3. Lower right','4. Press left overhead','5. Lower left','6. Repeat, alternating sides'],total:'Reps as prescribed (e.g. 2-3-5-10 ladder)'},
-  Offset:{title:'See-Saw / Touch-Down KB Press',sub:'Offset-loaded pressing uses the selected press variation. Choose See-Saw or Touch-Down in the guide.',steps:['1. Rack both bells','2. See-Saw: press one up as the other lowers','3. Touch-Down: start at lockout, lower one bell to shoulder','4. Press it back to lockout, then alternate','5. Repeat'],total:'Reps as prescribed (e.g. 2-3-5-10 ladder)'}
- };
- return map[variant]||map.Double;
+function total(type,rounds,extra){return(type==='ABC'?rounds*6:rounds*20)+extra}
+
+function migrate(x,type){
+  const setup=x.setup||x.variant||'Double';
+  let guide=x.guide||'';
+  if(!guide){
+    if(type==='ABC')guide=setup==='Double'?'ABC Bilateral':'ABC Single/Offset';
+    else guide=setup==='Single'?'Alternating KB Press':setup==='Offset'?'See-Saw KB Press':'Double KB Press';
+  }
+  return{...x,setup,guide};
 }
-function guideHTML(type,variant){
- const g=guideData(type,variant);
- return '<details class="visualGuide" open><summary>VISUAL GUIDE · '+esc(g.title)+'</summary><div class="guideSub">'+esc(g.sub)+'</div><div class="guideSteps">'+g.steps.map(s=>'<div class="guideStep">'+esc(s)+'</div>').join('')+'</div><div class="guideTotal">'+esc(g.total)+'</div></details>';
+function currentPlan(d){
+  const start=new Date((d.startDate||localDate())+'T00:00:00');
+  const today=new Date();today.setHours(0,0,0,0);
+  const n=Math.max(0,Math.floor((today-start)/86400000));
+  const week=Math.min(8,Math.floor(n/7)+1);
+  const day=n%7+1;
+  return{week,day};
 }
-function render(){
- injectStyle();const host=document.getElementById('todayView');if(!host)return;const d=read(),key=`${selected.week}-${selected.day}`,row=d.logs.find(x=>x.key===key)||{},type=schedule[selected.week][selected.day-1][0],note=schedule[selected.week][selected.day-1][1],x=row[type.toLowerCase()]||{};const date=x.date||row.date||localDate(),time=x.time||'';
- let html=`<div class="dayPicker"><div class="dayPickerTitle">SELECT WORKOUT</div><div class="dayPickerGrid"><select id="pickWeek" aria-label="Program week">${Array.from({length:8},(_,i)=>`<option value="${i+1}" ${selected.week===i+1?'selected':''}>Week ${i+1}${i>=6?' — GOAL':''}</option>`).join('')}</select><select id="pickDay" aria-label="Program day">${[1,2,3].map(i=>`<option value="${i}" ${selected.day===i?'selected':''}>Day ${i} · ${schedule[selected.week][i-1][0]}</option>`).join('')}</select></div><div class="selectedPlan"><b>${type}</b> · ${esc(note)}</div><div class="dateTimeGrid"><div><label style="display:block;font-size:9px;font-weight:900;letter-spacing:.08em;color:#6b7586;margin-bottom:5px">EXERCISE DATE</label><input id="exerciseDate" type="date" value="${esc(date)}"></div><div><label style="display:block;font-size:9px;font-weight:900;letter-spacing:.08em;color:#6b7586;margin-bottom:5px">EXERCISE TIME</label><input id="exerciseTime" type="time" value="${esc(time)}"></div></div><div class="pickerActions"><button type="button" id="prevDay">‹ PREVIOUS</button><button type="button" id="nextDay">NEXT ›</button></div></div>`;
- const goal=selected.week>=7?(type==='ABC'?'Goal week: 30 rounds.':'Goal week: 100 reps.'):(type==='ABC'?'6 reps per round.':'20 reps per full ladder.');const variant=x.variant||'Double',left=x.left||20,right=x.right||20,rounds=x.rounds??0,extra=x.extra??0;
- html+=`<div class="todayHead"><span class="week">WEEK ${selected.week} · DAY ${selected.day}</span><span class="pill ${selected.week>=7?'goal':''}">${selected.week>=7?'GOAL WEEK':'SELECTED'}</span></div><section class="section"><h2>${type}</h2><div class="note">${esc(note)}</div><section class="movement" data-type="${type}"><div class="movementTitle"><h3>${type}</h3><span class="pill">${type==='ABC'?'2 cleans · 1 press · 3 squats':'2-3-5-10 ladder'}</span></div><div class="note">${goal} Log the work you actually complete.</div><div class="field" style="margin-top:9px"><label>EXECUTION</label></div><div id="visualGuideWrap">${guideHTML(type,variant)}</div><div class="seg"><button type="button" data-v="Double" class="${variant==='Double'?'on':''}">Double</button><button type="button" data-v="Single" class="${variant==='Single'?'on':''}">Single</button><button type="button" data-v="Offset" class="${variant==='Offset'?'on':''}">Offset</button></div><div class="field"><label>KETTLEBELLS</label></div><div class="bellRow"><div class="field"><label>LEFT BELL</label><select data-field="left"><option ${left==20?'selected':''}>20</option><option ${left==30?'selected':''}>30</option><option ${left==40?'selected':''}>40</option></select></div><div class="field"><label>RIGHT BELL</label><select data-field="right"><option ${right==20?'selected':''}>20</option><option ${right==30?'selected':''}>30</option><option ${right==40?'selected':''}>40</option></select></div></div><div class="logGrid" style="margin-top:8px"><div class="field"><label>ROUNDS</label><div class="stepper"><button type="button" data-step="rounds" data-delta="-1">−</button><strong data-field="rounds">${rounds}</strong><button type="button" data-step="rounds" data-delta="1">+</button></div></div><div class="field"><label>EXTRA REPS</label><div class="stepper"><button type="button" data-step="extra" data-delta="-1">−</button><strong data-field="extra">${extra}</strong><button type="button" data-step="extra" data-delta="1">+</button></div></div><div class="field"><label>RPE</label><select data-field="rpe"><option value="">—</option>${Array.from({length:10},(_,i)=>`<option value="${i+1}" ${Number(x.rpe)===i+1?'selected':''}>${i+1}</option>`).join('')}</select></div><div class="field"><label>TIME</label><input data-field="time" value="${esc(time)}" placeholder="e.g. 12:40"></div><div class="field wide"><label>NOTES</label><input data-field="notes" value="${esc(x.notes||'')}" placeholder="Optional"></div></div><div class="summary"><span>Total reps</span><strong data-total>${total(type,rounds,extra)}</strong></div><button type="button" class="btn saveBtn" id="pickerSave">${x.saved?'UPDATE':'LOG '+type}</button></section></section>`;host.innerHTML=html;bind()}
-function bind(){const host=document.getElementById('todayView');if(!host)return;document.getElementById('pickWeek').addEventListener('change',e=>{selected.week=Number(e.target.value);selected.day=1;render()});document.getElementById('pickDay').addEventListener('change',e=>{selected.day=Number(e.target.value);render()});document.getElementById('prevDay').addEventListener('click',e=>{e.stopPropagation();move(-1)});document.getElementById('nextDay').addEventListener('click',e=>{e.stopPropagation();move(1)});host.querySelectorAll('[data-v]').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();host.querySelectorAll('[data-v]').forEach(x=>x.classList.remove('on'));b.classList.add('on');const w=document.getElementById('visualGuideWrap');if(w)w.innerHTML=guideHTML(type,b.dataset.v)}));host.querySelectorAll('[data-step]').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();const f=host.querySelector('[data-field="'+b.dataset.step+'"]');const max=b.dataset.step==='rounds'?35:100;f.textContent=Math.max(0,Math.min(max,Number(f.textContent)+Number(b.dataset.delta)));updateTotal()}));document.getElementById('pickerSave').addEventListener('click',e=>{e.stopPropagation();save()})}
-function updateTotal(){const f=document.querySelector('#todayView .movement'),type=f.dataset.type,r=Number(f.querySelector('[data-field="rounds"]').textContent),e=Number(f.querySelector('[data-field="extra"]').textContent);f.querySelector('[data-total]').textContent=total(type,r,e)}
-function move(delta){let d=selected.day+delta,w=selected.week;if(d<1){if(w>1){w--;d=3}else return}else if(d>3){if(w<8){w++;d=1}else return}selected={week:w,day:d};render()}
-function refreshProgress(){const host=document.getElementById('progressView');if(!host)return;const d=read(),logs=d.logs.flatMap(x=>['press','abc'].filter(k=>x[k]).map(k=>({...x[k],date:x.date,key:x.key,type:k.toUpperCase()}))).sort((a,b)=>String(b.date).localeCompare(String(a.date)));const sessions=logs.length,bestABC=Math.max(0,...logs.filter(x=>x.type==='ABC').map(x=>x.rounds||0)),bestPress=Math.max(0,...logs.filter(x=>x.type==='PRESS').map(x=>x.total||0)),weights=Math.max(0,...logs.map(x=>Math.max(x.left||0,x.right||0)));host.innerHTML='<section class="section"><h2>Progress</h2><div class="statGrid"><div class="stat"><span>SESSIONS</span><b>'+sessions+'</b></div><div class="stat"><span>BEST ABC</span><b>'+bestABC+' rounds</b></div><div class="stat"><span>BEST PRESS</span><b>'+bestPress+' reps</b></div><div class="stat"><span>HEAVIEST BELL</span><b>'+weights+' lb</b></div></div></section><section class="section"><h2>History</h2>'+(logs.length?logs.map(x=>'<div class="historyItem"><div class="dateBox">'+esc(x.date.slice(5))+'</div><div><b>'+x.type+'</b><small>'+x.rounds+' rounds · '+x.total+' reps · '+Math.max(x.left||0,x.right||0)+' lb'+(x.rpe?' · RPE '+x.rpe:'')+'</small></div><button type="button" class="btn danger" data-picker-delete="'+esc(x.key+'|'+x.type.toLowerCase())+'">×</button></div>').join(''):'<div class="empty">No workouts logged yet.</div>')+'</section>'}
-function save(){const host=document.getElementById('todayView'),f=host.querySelector('.movement'),type=f.dataset.type,g=n=>f.querySelector('[data-field="'+n+'"]'),date=document.getElementById('exerciseDate').value||localDate(),time=g('time').value||document.getElementById('exerciseTime').value||'',rounds=Number(f.querySelector('[data-field="rounds"]').textContent)||0,extra=Number(f.querySelector('[data-field="extra"]').textContent)||0,d=read(),key=`${selected.week}-${selected.day}`;let row=d.logs.find(x=>x.key===key);if(!row){row={key,date};d.logs.push(row)}row.date=date;row[type.toLowerCase()]={type,variant:f.querySelector('.seg .on')?.dataset.v||'Double',left:Number(g('left').value),right:Number(g('right').value),rounds,extra,total:total(type,rounds,extra),rpe:g('rpe').value?Number(g('rpe').value):null,time,notes:g('notes').value,saved:true};write(d);refreshProgress();render();toast('Saved '+type+' · Week '+selected.week+' Day '+selected.day+' · '+date+(time?' '+time:''))}
-function deleteLog(token){const [key,type]=token.split('|'),d=read(),row=d.logs.find(x=>x.key===key);if(row)delete row[type];d.logs=d.logs.filter(x=>x.press||x.abc);write(d);refreshProgress();render()}
-function toast(s){const e=document.getElementById('toast');if(!e)return;e.textContent=s;e.classList.add('show');clearTimeout(window.__pickerToast);window.__pickerToast=setTimeout(()=>e.classList.remove('show'),2200)}
-function init(){if(document.getElementById('todayView')){render();refreshProgress()}}
+function getEntry(d,w,day,type){
+  const row=d.logs.find(x=>x.key===`${w}-${day}`);
+  return row?.[type.toLowerCase()]?migrate(row[type.toLowerCase()],type):{};
+}
+function guideOptions(type,setup){
+  if(type==='ABC')return setup==='Double'
+    ?[['ABC Bilateral','Two-Bell Bilateral']]
+    :[['ABC Single/Offset','Single / Offset-Load Alternating']];
+  return Object.keys(pressGuides).map(k=>[k,pressGuides[k].title]);
+}
+function selectedGuide(type,setup,requested){
+  const opts=guideOptions(type,setup).map(x=>x[0]);
+  return opts.includes(requested)?requested:opts[0];
+}
+
+function injectStyle(){
+  if(document.getElementById('dayPickerStyle'))return;
+  const s=document.createElement('style');
+  s.id='dayPickerStyle';
+  s.textContent=`
+    .dayPicker{background:#fff;border:1px solid #e2e5eb;border-radius:20px;padding:14px 16px;margin:10px 0;box-shadow:0 4px 18px #17233b09}
+    .dayPickerTitle{font-size:10px;font-weight:900;letter-spacing:.14em;color:#687386;margin-bottom:8px}
+    .dayPickerGrid,.dateTimeGrid,.bellRow,.logGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    .dayPicker select,.dayPicker input,.movement select,.movement input{width:100%;border:1px solid #d8dce4;border-radius:10px;padding:9px;background:#fff;color:#17233b}
+    .selectedPlan{margin-top:9px;background:#f2f3f7;border-radius:12px;padding:9px 11px;font-size:12px;color:#596579}
+    .pickerActions{display:flex;gap:8px;margin-top:9px}.pickerActions button{flex:1;border:0;border-radius:10px;padding:10px;font-weight:900;background:#eef0f5;color:#17233b}
+    .guideBox{margin:10px 0;border:1px solid #dfe3ea;border-radius:14px;overflow:hidden;background:#f8f9fb}
+    .guideText{padding:11px 12px;color:#17233b;font-size:13px;line-height:1.4}
+    .guideTotal{padding:9px 12px;background:#243f80;color:#fff;font-size:11px;font-weight:900}
+    .backupRow{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+    .backupRow button{border:1px solid #d8dce4;border-radius:10px;padding:10px;background:#fff;color:#17233b;font-weight:850}
+    .muted{color:#687386}
+    @media(max-width:300px){
+      .dayPicker{border-radius:11px;padding:7px;margin:4px 0}.dayPickerTitle{font-size:6px}
+      .dayPicker select,.dayPicker input,.movement select,.movement input{padding:5px;font-size:8px}
+      .selectedPlan{font-size:8px;padding:5px}.dayPickerGrid,.dateTimeGrid,.bellRow,.logGrid{gap:4px}
+      .pickerActions{gap:4px;margin-top:5px}.pickerActions button,.backupRow button{font-size:8px;padding:6px}
+      .guideText{font-size:8px;padding:6px}.guideTotal{font-size:7px;padding:5px}
+    }
+  `;
+  document.head.appendChild(s);
+}
+
+function guideHTML(type,guide){
+  const g=type==='ABC'?(guide==='ABC Bilateral'?abcGuides.bilateral:abcGuides.alternating):pressGuides[guide];
+  const totalText=type==='ABC'
+    ?(guide==='ABC Bilateral'?'Round: 2 cleans · 1 press · 3 front squats':'Round: 4 cleans · 4 presses · 4 front squats')
+    :'Reps as prescribed: 2-3-5-10 ladder = 20 reps';
+  return`<div class="guideBox"><div class="guideText"><b>${esc(g.title)}</b><br>${esc(g.text)}</div><div class="guideTotal">${esc(totalText)}</div></div>`;
+}
+
+function setupControls(setup,left,right){
+  if(setup==='Single')return`<div class="field"><label>BELL</label><select data-field="singleBell">${[20,30,40].map(w=>`<option value="${w}" ${left==w?'selected':''}>${w} lb</option>`).join('')}</select></div>`;
+  if(setup==='Offset')return`<div class="bellRow"><div class="field"><label>LEFT BELL</label><select data-field="left">${[20,30,40].map(w=>`<option value="${w}" ${left==w?'selected':''}>${w} lb</option>`).join('')}</select></div><div class="field"><label>RIGHT BELL</label><select data-field="right">${[20,30,40].map(w=>`<option value="${w}" ${right==w?'selected':''}>${w} lb</option>`).join('')}</select></div></div>`;
+  return`<div class="field"><label>BELLS</label><select data-field="doubleBell">${[20,30,40].map(w=>`<option value="${w}" ${left==w&&right==w?'selected':''}>${w} lb each</option>`).join('')}</select></div>`;
+}
+
+function renderToday(){
+  injectStyle();
+  const d=read(),p=currentPlan(d),type=schedule[p.week][p.day-1][0],note=schedule[p.week][p.day-1][1];
+  const x=getEntry(d,p.week,p.day,type),setup=x.setup||'Double',guide=selectedGuide(type,setup,x.guide);
+  const rounds=x.rounds??0,extra=x.extra??0;
+  const date=x.date||localDate(),time=x.time||'';
+  const goal=p.week>=7?(type==='ABC'?'Goal: 30 rounds':'Goal: 100 reps'):(type==='ABC'?'6 reps per round':'20 reps per ladder');
+  const guideOpts=guideOptions(type,setup);
+
+  document.getElementById('todayView').innerHTML=`
+    <div class="todayHead"><span class="week">WEEK ${p.week} · DAY ${p.day}</span><span class="pill ${p.week>=7?'goal':''}">${p.week>=7?'GOAL WEEK':'TODAY'}</span></div>
+    <section class="section">
+      <h2>${type}</h2>
+      <div class="note">${esc(note)} · ${goal}</div>
+      <div class="movement" data-type="${type}">
+        <div class="field"><label>KETTLEBELL SETUP</label>
+          <select data-field="setup">
+            <option value="Double" ${setup==='Double'?'selected':''}>Double — two matched bells</option>
+            <option value="Single" ${setup==='Single'?'selected':''}>Single — one bell</option>
+            <option value="Offset" ${setup==='Offset'?'selected':''}>Offset — two different weights</option>
+          </select>
+        </div>
+        <div class="field" style="margin-top:9px"><label>VISUAL GUIDE</label>
+          <select data-field="guide">${guideOpts.map(o=>`<option value="${esc(o[0])}" ${guide===o[0]?'selected':''}>${esc(o[1])}</option>`).join('')}</select>
+        </div>
+        <div id="guideWrap">${guideHTML(type,guide)}</div>
+        <div id="setupWrap">${setupControls(setup,x.left||20,x.right??20)}</div>
+        <div class="logGrid" style="margin-top:8px">
+          <div class="field"><label>ROUNDS</label><div class="stepper"><button type="button" data-step="rounds" data-delta="-1">−</button><strong data-field="rounds">${rounds}</strong><button type="button" data-step="rounds" data-delta="1">+</button></div></div>
+          <div class="field"><label>EXTRA REPS</label><div class="stepper"><button type="button" data-step="extra" data-delta="-1">−</button><strong data-field="extra">${extra}</strong><button type="button" data-step="extra" data-delta="1">+</button></div></div>
+          <div class="field"><label>RPE</label><select data-field="rpe"><option value="">—</option>${Array.from({length:10},(_,i)=>`<option value="${i+1}" ${Number(x.rpe)===i+1?'selected':''}>${i+1}</option>`).join('')}</select></div>
+          <div class="field"><label>TIME</label><input data-field="time" value="${esc(time)}" placeholder="e.g. 12:40"></div>
+          <div class="field wide"><label>NOTES</label><input data-field="notes" value="${esc(x.notes||'')}" placeholder="Optional"></div>
+        </div>
+        <div class="summary"><span>Total reps</span><strong data-total>${total(type,rounds,extra)}</strong></div>
+        <button type="button" class="btn saveBtn" id="pickerSave">${x.saved?'UPDATE':'LOG '+type}</button>
+      </div>
+    </section>`;
+  bindToday();
+}
+
+function bindToday(){
+  const host=document.getElementById('todayView'),movement=host.querySelector('.movement');
+  const p=currentPlan(read());
+  host.querySelector('[data-field="setup"]').addEventListener('change',e=>{
+    const d=read(),type=movement.dataset.type,x=getEntry(d,p.week,p.day,type);
+    const setup=e.target.value;
+    host.querySelector('[data-field="guide"]').innerHTML=guideOptions(type,setup).map(o=>`<option value="${esc(o[0])}">${esc(o[1])}</option>`).join('');
+    const guide=guideOptions(type,setup)[0][0];
+    host.querySelector('[data-field="guide"]').value=guide;
+    host.querySelector('#guideWrap').innerHTML=guideHTML(type,guide);
+    host.querySelector('#setupWrap').innerHTML=setupControls(setup,x.left||20,x.right??20);
+  });
+  host.querySelector('[data-field="guide"]').addEventListener('change',e=>{
+    host.querySelector('#guideWrap').innerHTML=guideHTML(movement.dataset.type,e.target.value);
+  });
+  host.querySelectorAll('[data-step]').forEach(b=>b.addEventListener('click',()=>{
+    const f=movement.querySelector('[data-field="'+b.dataset.step+'"]');
+    const max=b.dataset.step==='rounds'?35:100;
+    f.textContent=Math.max(0,Math.min(max,Number(f.textContent)+Number(b.dataset.delta)));
+    updateTotal(movement);
+  }));
+  host.querySelector('#pickerSave').addEventListener('click',save);
+}
+
+function updateTotal(m){m.querySelector('[data-total]').textContent=total(m.dataset.type,Number(m.querySelector('[data-field="rounds"]').textContent),Number(m.querySelector('[data-field="extra"]').textContent))}
+
+function save(){
+  const d=read(),p=currentPlan(d),m=document.querySelector('#todayView .movement'),type=m.dataset.type;
+  const setup=m.querySelector('[data-field="setup"]').value,guide=m.querySelector('[data-field="guide"]').value;
+  let left=20,right=20;
+  if(setup==='Single'){left=Number(m.querySelector('[data-field="singleBell"]').value);right=0}
+  else if(setup==='Offset'){left=Number(m.querySelector('[data-field="left"]').value);right=Number(m.querySelector('[data-field="right"]').value)}
+  else {left=Number(m.querySelector('[data-field="doubleBell"]').value);right=left}
+  const rounds=Number(m.querySelector('[data-field="rounds"]').textContent)||0,extra=Number(m.querySelector('[data-field="extra"]').textContent)||0;
+  let row=d.logs.find(x=>x.key===`${p.week}-${p.day}`);
+  if(!row){row={key:`${p.week}-${p.day}`,date:localDate()};d.logs.push(row)}
+  row.date=document.getElementById('exerciseDate')?.value||row.date||localDate();
+  row[type.toLowerCase()]={type,setup,guide,left,right,rounds,extra,total:total(type,rounds,extra),rpe:m.querySelector('[data-field="rpe"]').value?Number(m.querySelector('[data-field="rpe"]').value):null,time:m.querySelector('[data-field="time"]').value,notes:m.querySelector('[data-field="notes"]').value,saved:true};
+  write(d);renderProgress();renderToday();toast('Saved '+type);
+}
+
+function renderProgress(){
+  const host=document.getElementById('progressView');if(!host)return;
+  const d=read(),logs=d.logs.flatMap(x=>['press','abc'].filter(k=>x[k]).map(k=>({...migrate(x[k],k==='abc'?'ABC':'Press'),date:x.date,key:x.key,type:k.toUpperCase()}))).sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+  const sessions=logs.length,bestABC=Math.max(0,...logs.filter(x=>x.type==='ABC').map(x=>x.rounds||0)),bestPress=Math.max(0,...logs.filter(x=>x.type==='PRESS').map(x=>x.total||0)),weights=Math.max(0,...logs.map(x=>Math.max(x.left||0,x.right||0)));
+  host.innerHTML=`
+    <section class="section"><h2>Progress</h2><div class="statGrid">
+      <div class="stat"><span>SESSIONS</span><b>${sessions}</b></div>
+      <div class="stat"><span>BEST ABC</span><b>${bestABC} rounds</b></div>
+      <div class="stat"><span>BEST PRESS</span><b>${bestPress} reps</b></div>
+      <div class="stat"><span>HEAVIEST BELL</span><b>${weights} lb</b></div>
+    </div></section>
+    <section class="section"><h2>History</h2>${logs.length?logs.map(x=>`
+      <div class="historyItem">
+        <div class="dateBox">${esc(String(x.date).slice(5))}</div>
+        <div><b>${x.type}</b><small>${x.rounds||0} rounds · ${x.total||0} reps · ${Math.max(x.left||0,x.right||0)} lb${x.rpe?' · RPE '+x.rpe:''}<br>${esc(x.guide||'')} · ${esc(x.setup||'')}</small></div>
+        <button type="button" class="btn danger" data-delete="${esc(x.key+'|'+x.type.toLowerCase())}">×</button>
+      </div>`).join(''):'<div class="empty">No workouts logged yet.</div>'}</section>`;
+}
+
+function renderProgram(){
+  const host=document.getElementById('programView'),p=currentPlan(read());
+  host.innerHTML=`
+    <section class="section"><h2>Program</h2>
+      <div class="statGrid">
+        <div class="stat"><span>PRESS</span><b>2-3-5-10</b><small>20 reps per ladder · goal 100</small></div>
+        <div class="stat"><span>ABC</span><b>2 · 1 · 3</b><small>6 reps per round · goal 30</small></div>
+      </div>
+      <div class="note" style="margin-top:10px"><b>Weeks 1–2:</b> one movement per day, alternating Press and ABC.<br><b>Weeks 3–6:</b> build volume; Day Two is the hardest session.<br><b>Weeks 7–8:</b> goal weeks.</div>
+      <div class="note" style="margin-top:8px"><b>Press guides:</b> Double · Alternating · See-Saw · Touch-Down<br><b>ABC guides:</b> Two-Bell Bilateral · Single / Offset-Load Alternating</div>
+    </section>
+    <section class="section"><h2>Weeks</h2>
+      ${Object.entries(schedule).map(([w,days])=>`<details class="programWeek" ${Number(w)===p.week?'open':''}><summary>Week ${w}${w>=7?' — GOAL WEEK':''}</summary><div class="days">${days.map((x,i)=>`<div class="day"><b>Day ${i+1} · ${x[0]}</b><br><span class="muted">${esc(x[1])}</span></div>`).join('')}</div></details>`).join('')}
+    </section>
+    <section class="section"><h2>Data</h2>
+      <div class="note">Your workouts stay on this device. Export a backup to Files/iCloud Drive periodically; import it if you ever need to restore the log.</div>
+      <div class="backupRow"><button type="button" id="exportBackup">EXPORT BACKUP</button><button type="button" id="importBackup">IMPORT BACKUP</button></div>
+      <input id="backupFile" type="file" accept=".json,application/json" hidden>
+    </section>`;
+  document.getElementById('exportBackup').addEventListener('click',exportBackup);
+  document.getElementById('importBackup').addEventListener('click',()=>document.getElementById('backupFile').click());
+  document.getElementById('backupFile').addEventListener('change',importBackup);
+}
+
+function exportBackup(){
+  const d=read(),payload={schema:SCHEMA,app:'Armor Building Formula',exportedAt:new Date().toISOString(),data:d};
+  const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='ABF-backup.json';a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);toast('Backup exported');
+}
+function importBackup(e){
+  const file=e.target.files?.[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=()=>{
+    try{
+      const payload=JSON.parse(reader.result),d=payload.data||payload;
+      if(!d||!Array.isArray(d.logs))throw new Error('Invalid backup');
+      if(!confirm('Replace the current workout log with this backup?'))return;
+      write(d);renderAll();toast('Backup restored');
+    }catch{toast('Invalid backup file')}
+    e.target.value='';
+  };
+  reader.readAsText(file);
+}
+
+function deleteLog(token){
+  const [key,type]=token.split('|'),d=read(),row=d.logs.find(x=>x.key===key);
+  if(row)delete row[type];
+  d.logs=d.logs.filter(x=>x.press||x.abc);write(d);renderAll();toast('Workout deleted');
+}
+function move(delta){
+  const d=read(),p=currentPlan(d);let day=p.day+delta,week=p.week;
+  if(day<1){if(week>1){week--;day=3}else return}
+  else if(day>3){if(week<8){week++;day=1}else return}
+  const target={week,day};renderSelected(target);
+}
+let selected=null;
+function renderSelected(target){
+  const d=read();selected=target;
+  const type=schedule[target.week][target.day-1][0],x=getEntry(d,target.week,target.day,type);
+  renderWorkout(target,type,x);
+}
+function renderWorkout(target,type,x){
+  const d=read(),note=schedule[target.week][target.day-1][1],setup=x.setup||'Double',guide=selectedGuide(type,setup,x.guide);
+  const rounds=x.rounds??0,extra=x.extra??0,date=x.date||localDate(),time=x.time||'',goal=target.week>=7?(type==='ABC'?'Goal: 30 rounds':'Goal: 100 reps'):(type==='ABC'?'6 reps per round':'20 reps per ladder');
+  const host=document.getElementById('todayView');
+  host.innerHTML=`
+    <div class="dayPicker"><div class="dayPickerTitle">SELECT WORKOUT</div>
+      <div class="dayPickerGrid">
+        <select id="pickWeek" aria-label="Program week">${Array.from({length:8},(_,i)=>`<option value="${i+1}" ${target.week===i+1?'selected':''}>Week ${i+1}${i>=6?' — GOAL':''}</option>`).join('')}</select>
+        <select id="pickDay" aria-label="Program day">${[1,2,3].map(i=>`<option value="${i}" ${target.day===i?'selected':''}>Day ${i} · ${schedule[target.week][i-1][0]}</option>`).join('')}</select>
+      </div>
+      <div class="selectedPlan"><b>${type}</b> · ${esc(note)}</div>
+      <div class="dateTimeGrid">
+        <div><label class="field"><span style="display:block">EXERCISE DATE</span><input id="exerciseDate" type="date" value="${esc(date)}"></label></div>
+        <div><label class="field"><span style="display:block">EXERCISE TIME</span><input id="exerciseTime" type="time" value="${esc(time)}"></label></div>
+      </div>
+      <div class="pickerActions"><button type="button" id="prevDay">‹ PREVIOUS</button><button type="button" id="nextDay">NEXT ›</button></div>
+    </div>
+    <div class="todayHead"><span class="week">WEEK ${target.week} · DAY ${target.day}</span><span class="pill ${target.week>=7?'goal':''}">${target.week>=7?'GOAL WEEK':'TODAY'}</span></div>
+    <section class="section"><h2>${type}</h2><div class="note">${esc(note)} · ${goal}</div>
+      <div class="movement" data-type="${type}">
+        <div class="field"><label>KETTLEBELL SETUP</label><select data-field="setup">
+          <option value="Double" ${setup==='Double'?'selected':''}>Double — two matched bells</option>
+          <option value="Single" ${setup==='Single'?'selected':''}>Single — one bell</option>
+          <option value="Offset" ${setup==='Offset'?'selected':''}>Offset — two different weights</option>
+        </select></div>
+        <div class="field" style="margin-top:9px"><label>VISUAL GUIDE</label><select data-field="guide">${guideOptions(type,setup).map(o=>`<option value="${esc(o[0])}" ${guide===o[0]?'selected':''}>${esc(o[1])}</option>`).join('')}</select></div>
+        <div id="guideWrap">${guideHTML(type,guide)}</div>
+        <div id="setupWrap">${setupControls(setup,x.left||20,x.right??20)}</div>
+        <div class="logGrid" style="margin-top:8px">
+          <div class="field"><label>ROUNDS</label><div class="stepper"><button type="button" data-step="rounds" data-delta="-1">−</button><strong data-field="rounds">${rounds}</strong><button type="button" data-step="rounds" data-delta="1">+</button></div></div>
+          <div class="field"><label>EXTRA REPS</label><div class="stepper"><button type="button" data-step="extra" data-delta="-1">−</button><strong data-field="extra">${extra}</strong><button type="button" data-step="extra" data-delta="1">+</button></div></div>
+          <div class="field"><label>RPE</label><select data-field="rpe"><option value="">—</option>${Array.from({length:10},(_,i)=>`<option value="${i+1}" ${Number(x.rpe)===i+1?'selected':''}>${i+1}</option>`).join('')}</select></div>
+          <div class="field"><label>TIME</label><input data-field="time" value="${esc(time)}" placeholder="e.g. 12:40"></div>
+          <div class="field wide"><label>NOTES</label><input data-field="notes" value="${esc(x.notes||'')}" placeholder="Optional"></div>
+        </div>
+        <div class="summary"><span>Total reps</span><strong data-total>${total(type,rounds,extra)}</strong></div>
+        <button type="button" class="btn saveBtn" id="pickerSave">${x.saved?'UPDATE':'LOG '+type}</button>
+      </div>
+    </section>`;
+  bindWorkout(target,type);
+}
+function bindWorkout(target,type){
+  const host=document.getElementById('todayView'),m=host.querySelector('.movement');
+  host.querySelector('#pickWeek').addEventListener('change',e=>{selected={week:Number(e.target.value),day:1};renderSelected(selected)});
+  host.querySelector('#pickDay').addEventListener('change',e=>{selected={week:target.week,day:Number(e.target.value)};renderSelected(selected)});
+  host.querySelector('#prevDay').addEventListener('click',()=>move(-1));
+  host.querySelector('#nextDay').addEventListener('click',()=>move(1));
+  host.querySelector('[data-field="setup"]').addEventListener('change',e=>{
+    const setup=e.target.value,d=read(),x=getEntry(d,target.week,target.day,type);
+    const guide=guideOptions(type,setup)[0][0];
+    host.querySelector('[data-field="guide"]').innerHTML=guideOptions(type,setup).map(o=>`<option value="${esc(o[0])}">${esc(o[1])}</option>`).join('');
+    host.querySelector('[data-field="guide"]').value=guide;
+    host.querySelector('#guideWrap').innerHTML=guideHTML(type,guide);
+    host.querySelector('#setupWrap').innerHTML=setupControls(setup,x.left||20,x.right??20);
+  });
+  host.querySelector('[data-field="guide"]').addEventListener('change',e=>host.querySelector('#guideWrap').innerHTML=guideHTML(type,e.target.value));
+  host.querySelectorAll('[data-step]').forEach(b=>b.addEventListener('click',()=>{
+    const f=m.querySelector('[data-field="'+b.dataset.step+'"]'),max=b.dataset.step==='rounds'?35:100;
+    f.textContent=Math.max(0,Math.min(max,Number(f.textContent)+Number(b.dataset.delta)));updateTotal(m);
+  }));
+  host.querySelector('#pickerSave').addEventListener('click',()=>saveWorkout(target,type));
+}
+function saveWorkout(target,type){
+  const d=read(),m=document.querySelector('#todayView .movement'),setup=m.querySelector('[data-field="setup"]').value,guide=m.querySelector('[data-field="guide"]').value;
+  let left=20,right=20;
+  if(setup==='Single'){left=Number(m.querySelector('[data-field="singleBell"]').value);right=0}
+  else if(setup==='Offset'){left=Number(m.querySelector('[data-field="left"]').value);right=Number(m.querySelector('[data-field="right"]').value)}
+  else {left=Number(m.querySelector('[data-field="doubleBell"]').value);right=left}
+  const rounds=Number(m.querySelector('[data-field="rounds"]').textContent)||0,extra=Number(m.querySelector('[data-field="extra"]').textContent)||0;
+  let row=d.logs.find(x=>x.key===`${target.week}-${target.day}`);
+  if(!row){row={key:`${target.week}-${target.day}`,date:localDate()};d.logs.push(row)}
+  row.date=document.getElementById('exerciseDate').value||row.date||localDate();
+  row[type.toLowerCase()]={type,setup,guide,left,right,rounds,extra,total:total(type,rounds,extra),rpe:m.querySelector('[data-field="rpe"]').value?Number(m.querySelector('[data-field="rpe"]').value):null,time:m.querySelector('[data-field="time"]').value||document.getElementById('exerciseTime').value||'',notes:m.querySelector('[data-field="notes"]').value,saved:true};
+  write(d);renderProgress();renderWorkout(target,type,row[type.toLowerCase()]);toast('Saved '+type);
+}
+function renderAll(){const d=read(),p=currentPlan(d);selected=p;renderWorkout(p,schedule[p.week][p.day-1][0],getEntry(d,p.week,p.day,schedule[p.week][p.day-1][0]));renderProgress();renderProgram()}
+function setTab(tab){
+  ['today','progress','program'].forEach(k=>document.getElementById(k+'View').classList.toggle('hidden',k!==tab));
+  document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===tab));
+}
+function renderProgram(){/* replaced below */}
+function renderProgramReal(){
+  const host=document.getElementById('programView'),p=currentPlan(read());
+  host.innerHTML=`
+    <section class="section"><h2>Program</h2><div class="statGrid">
+      <div class="stat"><span>PRESS</span><b>2-3-5-10</b><small>20 reps per ladder · goal 100</small></div>
+      <div class="stat"><span>ABC</span><b>2 · 1 · 3</b><small>6 reps per round · goal 30</small></div>
+    </div><div class="note" style="margin-top:10px"><b>Weeks 1–2:</b> one movement per day, alternating Press and ABC.<br><b>Weeks 3–6:</b> build volume; Day Two is the hardest session.<br><b>Weeks 7–8:</b> goal weeks.</div>
+    <div class="note" style="margin-top:8px"><b>Press guides:</b> Double · Alternating · See-Saw · Touch-Down<br><b>ABC guides:</b> Two-Bell Bilateral · Single / Offset-Load Alternating</div></section>
+    <section class="section"><h2>Weeks</h2>${Object.entries(schedule).map(([w,days])=>`<details class="programWeek" ${Number(w)===p.week?'open':''}><summary>Week ${w}${w>=7?' — GOAL WEEK':''}</summary><div class="days">${days.map((x,i)=>`<div class="day"><b>Day ${i+1} · ${x[0]}</b><br><span class="muted">${esc(x[1])}</span></div>`).join('')}</div></details>`).join('')}</section>
+    <section class="section"><h2>Data</h2><div class="note">Workouts stay on this device. Export <b>ABF-backup.json</b> to Files/iCloud Drive periodically. Import it here if you need to restore the log.</div><div class="backupRow"><button type="button" id="exportBackup">EXPORT BACKUP</button><button type="button" id="importBackup">IMPORT BACKUP</button></div><input id="backupFile" type="file" accept=".json,application/json" hidden></section>`;
+  document.getElementById('exportBackup').addEventListener('click',exportBackup);
+  document.getElementById('importBackup').addEventListener('click',()=>document.getElementById('backupFile').click());
+  document.getElementById('backupFile').addEventListener('change',importBackup);
+}
+renderProgram=renderProgramReal;
+
+function exportBackup(){
+  const payload={schema:SCHEMA,app:'Armor Building Formula',exportedAt:new Date().toISOString(),data:read()};
+  const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');
+  a.href=url;a.download='ABF-backup.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);toast('Backup exported');
+}
+function importBackup(e){
+  const file=e.target.files?.[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=()=>{
+    try{
+      const payload=JSON.parse(reader.result),d=payload.data||payload;
+      if(!d||!Array.isArray(d.logs))throw new Error();
+      if(!confirm('Replace the current workout log with this backup?'))return;
+      write(d);renderAll();toast('Backup restored');
+    }catch{toast('Invalid backup file')}
+    e.target.value='';
+  };
+  reader.readAsText(file);
+}
+function renderProgress(){
+  const host=document.getElementById('progressView');if(!host)return;
+  const d=read(),logs=d.logs.flatMap(x=>['press','abc'].filter(k=>x[k]).map(k=>({...migrate(x[k],k==='abc'?'ABC':'Press'),date:x.date,key:x.key,type:k.toUpperCase()}))).sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+  const sessions=logs.length,bestABC=Math.max(0,...logs.filter(x=>x.type==='ABC').map(x=>x.rounds||0)),bestPress=Math.max(0,...logs.filter(x=>x.type==='PRESS').map(x=>x.total||0)),weights=Math.max(0,...logs.map(x=>Math.max(x.left||0,x.right||0)));
+  host.innerHTML=`<section class="section"><h2>Progress</h2><div class="statGrid"><div class="stat"><span>SESSIONS</span><b>${sessions}</b></div><div class="stat"><span>BEST ABC</span><b>${bestABC} rounds</b></div><div class="stat"><span>BEST PRESS</span><b>${bestPress} reps</b></div><div class="stat"><span>HEAVIEST BELL</span><b>${weights} lb</b></div></div></section><section class="section"><h2>History</h2>${logs.length?logs.map(x=>`<div class="historyItem"><div class="dateBox">${esc(String(x.date).slice(5))}</div><div><b>${x.type}</b><small>${x.rounds||0} rounds · ${x.total||0} reps · ${Math.max(x.left||0,x.right||0)} lb${x.rpe?' · RPE '+x.rpe:''}<br>${esc(x.guide||'')} · ${esc(x.setup||'')}</small></div><button type="button" class="btn danger" data-delete="${esc(x.key+'|'+x.type.toLowerCase())}">×</button></div>`).join(''):'<div class="empty">No workouts logged yet.</div>'}</section>`;
+}
+document.addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b)return;
+  if(b.dataset.tab){setTab(b.dataset.tab);return}
+  if(b.dataset.delete){if(confirm('Delete this logged workout?'))deleteLog(b.dataset.delete)}
+});
+function init(){injectStyle();renderAll();setTab('today')}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
-document.addEventListener('click',e=>{const b=e.target.closest('[data-picker-delete]');if(!b)return;e.stopImmediatePropagation();if(confirm('Delete this logged workout?'))deleteLog(b.dataset.pickerDelete)},true);
 })();

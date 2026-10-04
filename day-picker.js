@@ -2,8 +2,6 @@
 'use strict';
 
 const DATA_KEY='abf_data_v3';
-const SCHEMA=4;
-
 const schedule={
   1:[['Press','Calibrate load and technique'],['ABC','Calibrate load and technique'],['Press','Calibrate load and technique']],
   2:[['ABC','Calibrate load and technique'],['Press','Calibrate load and technique'],['ABC','Calibrate load and technique']],
@@ -266,14 +264,14 @@ function bindWorkout(target,type){
   }));
   host.querySelector('#pickerSave').addEventListener('click',()=>saveWorkout(target,type));
 }
-function logToAppleHealth(type, target, row){
+function logToAppleHealth(type, row){
   let minutes=0;
-  const timerSeconds=Number(window.ABFTracker?.getWorkoutSeconds?.()||0);
-  if(timerSeconds>0){minutes=Math.max(0.01,Math.round((timerSeconds/60)*100)/100)}
-  else{const rawDuration=String(row.duration||row.time||'').trim();if(/^\d+:\d{1,2}$/.test(rawDuration)){const [m,s]=rawDuration.split(':').map(Number);minutes=Math.max(0.01,m+(s/60))}else if(/^\d+(?:\.\d+)?$/.test(rawDuration)){minutes=Math.max(0.01,Number(rawDuration))}}
+  const rawDuration=String(row.duration||row.time||'').trim();
+  if(/^\d+:\d{1,2}$/.test(rawDuration)){const [m,s]=rawDuration.split(':').map(Number);minutes=Math.max(0.01,m+(s/60))}
+  else if(/^\d+(?:\.\d+)?$/.test(rawDuration)){minutes=Math.max(0.01,Number(rawDuration))}
   if(minutes<=0){toast('Use the workout timer or enter a duration');return}
   const startTime=row.startTime&&/^\d{2}:\d{2}$/.test(row.startTime)?row.startTime:'00:00';
-  const dateTime=row._date?(row._date+'T'+startTime):new Date().toISOString().slice(0,10)+'T'+startTime;
+  const dateTime=(row.date||row._date||new Date().toISOString().slice(0,10))+'T'+startTime;
   const payload=[type,dateTime,minutes.toFixed(2),row.rounds||0,row.left||0,row.right||0,row.rpe||''].join('|');
   // iOS officially supports clipboard input for shortcuts://run-shortcut.
   if(navigator.clipboard?.writeText){
@@ -304,8 +302,8 @@ function saveWorkout(target,type){
   const startDate=document.getElementById('exerciseDate').value||timerStart?.date||row.date||localDate();
   const startTime=document.getElementById('exerciseTime').value||timerStart?.time||row.startTime||localTime();
   row.date=startDate;
-  row[type.toLowerCase()]={type,setup,guide,left,right,rounds,extra,total:total(type,rounds,extra),rpe:m.querySelector('[data-field="rpe"]').value?Number(m.querySelector('[data-field="rpe"]').value):null,startTime,duration,time:duration,notes:m.querySelector('[data-field="notes"]').value,saved:true,_date:startDate};
-  write(d);renderProgress();renderWorkout(target,type,row[type.toLowerCase()]);toast('Saved '+type);logToAppleHealth(type,target,row[type.toLowerCase()]);
+  row[type.toLowerCase()]={type,setup,guide,left,right,rounds,extra,total:total(type,rounds,extra),rpe:m.querySelector('[data-field="rpe"]').value?Number(m.querySelector('[data-field="rpe"]').value):null,startTime,duration,time:duration,notes:m.querySelector('[data-field="notes"]').value,saved:true};
+  write(d);renderProgress();renderWorkout(target,type,row[type.toLowerCase()]);toast('Saved '+type);logToAppleHealth(type,row[type.toLowerCase()]);
 }
 function renderAll(){const d=read(),p=currentPlan(d);selected=p;renderWorkout(p,schedule[p.week][p.day-1][0],getEntry(d,p.week,p.day,schedule[p.week][p.day-1][0]));renderProgress();renderProgram()}
 function setTab(tab){

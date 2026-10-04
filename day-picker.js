@@ -304,12 +304,22 @@ function bindWorkout(target,type){
   host.querySelector('#pickerSave').addEventListener('click',()=>saveWorkout(target,type));
 }
 function logToAppleHealth(type, target, row){
-  const seconds = Number(window.ABFTracker?.getWorkoutSeconds?.() || 0);
-  if(seconds <= 0){ toast('Start the workout timer before logging to Health'); return; }
-  const minutes = Math.max(0.01, Math.round((seconds/60)*100)/100);
-  const payload = [type, minutes.toFixed(2), row.rounds||0, row.left||0, row.right||0, row.rpe||''].join('|');
-  const url = 'shortcuts://run-shortcut?name=' + encodeURIComponent('ABF — Log Workout') + '&input=text&text=' + encodeURIComponent(payload);
-  window.location.href = url;
+  let minutes=0;
+  const rawTime=String(row.time||'').trim();
+  if(/^\\d+:\\d{1,2}$/.test(rawTime)){
+    const [m,s]=rawTime.split(':').map(Number);
+    minutes=Math.max(0.01,m+(s/60));
+  }else if(/^\\d+(?:\\.\\d+)?$/.test(rawTime)){
+    minutes=Math.max(0.01,Number(rawTime));
+  }else{
+    const seconds=Number(window.ABFTracker?.getWorkoutSeconds?.()||0);
+    if(seconds>0)minutes=Math.max(0.01,Math.round((seconds/60)*100)/100);
+  }
+  if(minutes<=0){ toast('Enter workout time before logging to Health'); return; }
+  const dateTime=row.date ? (row.date+'T'+(row.time&&/^\\d{2}:\\d{2}$/.test(row.time)?row.time:'00:00')) : '';
+  const payload=[type,dateTime,minutes.toFixed(2),row.rounds||0,row.left||0,row.right||0,row.rpe||''].join('|');
+  const url='shortcuts://run-shortcut?name='+encodeURIComponent('ABF — Log Workout')+'&input=text&text='+encodeURIComponent(payload);
+  window.location.href=url;
 }
 
 function saveWorkout(target,type){

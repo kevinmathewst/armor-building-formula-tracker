@@ -315,7 +315,7 @@ function logToAppleHealth(type, target, row){
   let minutes=0;
   const timerSeconds=Number(window.ABFTracker?.getWorkoutSeconds?.()||0);
   if(timerSeconds>0){minutes=Math.max(0.01,Math.round((timerSeconds/60)*100)/100)}
-  else{const rawDuration=String(row.duration||row.time||'').trim();if(/^\\d+:\\d{1,2}$/.test(rawDuration)){const [m,s]=rawDuration.split(':').map(Number);minutes=Math.max(0.01,m+(s/60))}else if(/^\\d+(?:\\.\\d+)?$/.test(rawDuration)){minutes=Math.max(0.01,Number(rawDuration))}}
+  else{const rawDuration=String(row.duration||row.time||'').trim();if(/^\d+:\d{1,2}$/.test(rawDuration)){const [m,s]=rawDuration.split(':').map(Number);minutes=Math.max(0.01,m+(s/60))}else if(/^\d+(?:\.\d+)?$/.test(rawDuration)){minutes=Math.max(0.01,Number(rawDuration))}}
   if(minutes<=0){toast('Use the workout timer or enter a duration');return}
   const startTime=row.startTime&&/^\\d{2}:\\d{2}$/.test(row.startTime)?row.startTime:'00:00';
   const dateTime=row.date?(row.date+'T'+startTime):'';
@@ -338,8 +338,8 @@ function saveWorkout(target,type){
   const timerStart=timerStartParts();
   const manualDuration=m.querySelector('[data-field="duration"]').value||'';
   const duration=timerSeconds>0?formatDuration(timerSeconds):manualDuration;
-  const startDate=document.getElementById('exerciseDate').value||row.date||timerStart?.date||localDate();
-  const startTime=document.getElementById('exerciseTime').value||row.startTime||timerStart?.time||localTime();
+  const startDate=document.getElementById('exerciseDate').value||timerStart?.date||row.date||localDate();
+  const startTime=document.getElementById('exerciseTime').value||timerStart?.time||row.startTime||localTime();
   row.date=startDate;
   row[type.toLowerCase()]={type,setup,guide,left,right,rounds,extra,total:total(type,rounds,extra),rpe:m.querySelector('[data-field="rpe"]').value?Number(m.querySelector('[data-field="rpe"]').value):null,startTime,duration,time:duration,notes:m.querySelector('[data-field="notes"]').value,saved:true};
   write(d);renderProgress();renderWorkout(target,type,row[type.toLowerCase()]);toast('Saved '+type);setTimeout(()=>logToAppleHealth(type,target,row[type.toLowerCase()]),250);

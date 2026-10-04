@@ -49,9 +49,9 @@ function toast(s){const e=document.getElementById("toast");if(!e)return;e.textCo
 async function keepAwake(){try{if("wakeLock"in navigator&&!wakeLock)wakeLock=await navigator.wakeLock.request("screen")}catch{}}
 function releaseAwake(){if(wakeLock){wakeLock.release().catch(()=>{});wakeLock=null}}
 function start(){if(timers.running)return;if(timers.completed||timers.elapsed>0||!timers.startedAt){timers.elapsed=0;timers.startedAt=now()}timers.completed=false;timers.running=true;timers.lastTick=now();timers.limitEnd=now()+900000;timers.restEnd=null;persist();document.dispatchEvent(new CustomEvent("abfWorkoutStarted",{detail:{startedAt:timers.startedAt}}));keepAwake();drawTimers()}
-function beginRest(){if(!timers.running)return;timers.restEnd=now()+60000;persist();drawTimers()}
+function beginRest(){if(!timers.running||timers.restEnd)return;timers.restEnd=now()+60000;persist();drawTimers();}
 function stop(){if(!timers.running)return;if(!confirm("Stop and end this workout?"))return;const elapsed=Math.floor(workSeconds());releaseAwake();timers={elapsed,lastTick:null,running:false,limitEnd:null,restEnd:null,startedAt:timers.startedAt,completed:true};persist();drawTimers();toast("Workout ended")}
-function main(){if(!timers.running)start();else if(!timers.restEnd)beginRest()}
+function main(){if(!timers.running){start();return}if(timers.restEnd){timers.restEnd=null;persist();drawTimers();toast("Rest ended");return}beginRest()}
 function resetLimit(){timers.limitEnd=timers.running?now()+900000:null;persist();drawTimers();toast("15-minute timer reset")}
 function resetRest(){timers.restEnd=null;persist();drawTimers();toast("Rest timer reset")}
 window.ABFTracker={
@@ -68,7 +68,7 @@ function drawTimers(){
  document.getElementById("limitClock").textContent=fmt(l);
  document.getElementById("restClock").textContent=fmt(r);
  const b=document.getElementById("mainBtn"),active=timers.running,resting=!!timers.restEnd;
- b.textContent=!active?"START":resting?"RESTING":"REST";
+ b.textContent=!active?"START":resting?"RESUME":"REST";
  b.className="primaryAction "+(!active?"start":resting?"resting":"rest");
  const stop=document.getElementById("stopBtn");stop.disabled=!active;stop.className="btn "+(active?"stop":"ghost");
 }

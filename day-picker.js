@@ -306,10 +306,10 @@ function bindWorkout(target,type){
 function logToAppleHealth(type, target, row){
   let minutes=0;
   const rawTime=String(row.time||'').trim();
-  if(/^\\d+:\\d{1,2}$/.test(rawTime)){
+  if(/^\d+:\d{1,2}$/.test(rawTime)){
     const [m,s]=rawTime.split(':').map(Number);
     minutes=Math.max(0.01,m+(s/60));
-  }else if(/^\\d+(?:\\.\\d+)?$/.test(rawTime)){
+  }else if(/^\d+(?:\.\d+)?$/.test(rawTime)){
     minutes=Math.max(0.01,Number(rawTime));
   }else{
     const seconds=Number(window.ABFTracker?.getWorkoutSeconds?.()||0);

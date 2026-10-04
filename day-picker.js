@@ -2,7 +2,6 @@
 'use strict';
 
 const DATA_KEY='abf_data_v3';
-const BACKUP_KEY='abf_backup_v3';
 const SCHEMA=4;
 
 const schedule={
@@ -54,7 +53,6 @@ function read(){
 }
 function write(d){
   localStorage.setItem(DATA_KEY,JSON.stringify(d));
-  try{localStorage.setItem(BACKUP_KEY,JSON.stringify({schema:SCHEMA,savedAt:new Date().toISOString(),data:d}))}catch{}
 }
 function toast(s){
   const e=document.getElementById('toast');if(!e)return;
@@ -114,8 +112,6 @@ function injectStyle(){
     .pickerActions{display:flex;gap:8px;margin-top:9px}.pickerActions button{flex:1;border:0;border-radius:10px;padding:10px;font-weight:900;background:#eef2f7;color:#20242b}
     .guideBox{margin:10px 0;border:1px solid #dfe3e8;border-radius:14px;overflow:hidden;background:#f7f8fa}
     .guideText{padding:11px 12px;color:#20242b;font-size:13px;line-height:1.4}
-    .backupRow{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
-    .backupRow button{border:1px solid #d7dbe2;border-radius:10px;padding:10px;background:#fff;color:#20242b;font-weight:850}
     .muted{color:#64748b}
     @media(max-width:300px){
       .dayPicker{border-radius:11px;padding:7px;margin:4px 0}.dayPickerTitle{font-size:6px}
@@ -164,14 +160,7 @@ function renderProgress(){
         <div><b>${x.type}</b><small>${x.rounds||0} rounds · ${x.total||0} reps · ${Math.max(x.left||0,x.right||0)} lb${x.rpe?' · RPE '+x.rpe:''}<br>${esc(x.guide||'')} · ${esc(x.setup||'')}</small></div>
         <button type="button" class="btn danger" data-delete="${esc(x.key+'|'+x.type.toLowerCase())}">×</button>
       </div>`).join(''):'<div class="empty">No workouts logged yet.</div>'}</section>
-    <section class="section"><h2>Data & Backup</h2>
-      <div class="note">Your workouts stay on this device. Export a backup to Files/iCloud Drive periodically; import it if you ever need to restore the log.</div>
-      <div class="backupRow"><button type="button" id="exportBackup">EXPORT BACKUP</button><button type="button" id="importBackup">IMPORT BACKUP</button></div>
-      <input id="backupFile" type="file" accept=".json,application/json" hidden>
-    </section>`;
-  document.getElementById('exportBackup').addEventListener('click',exportBackup);
-  document.getElementById('importBackup').addEventListener('click',()=>document.getElementById('backupFile').click());
-  document.getElementById('backupFile').addEventListener('change',importBackup);
+`;
 }
 function renderProgram(){
   const host=document.getElementById('programView'),p=currentPlan(read());
@@ -191,40 +180,6 @@ function renderProgram(){
     <section class="section"><h2>About</h2>
       <div class="note"><b>Created by Kevin Tharakan</b><br>Independent training tracker based on Dan John’s <i>The Armor Building Formula</i>.<br>This app is not affiliated with Dan John.</div>
     </section>`;
-  document.getElementById('exportBackup').addEventListener('click',exportBackup);
-  document.getElementById('importBackup').addEventListener('click',()=>document.getElementById('backupFile').click());
-  document.getElementById('backupFile').addEventListener('change',importBackup);
-}
-
-async function exportBackup(){
-  const payload={schema:SCHEMA,app:'Armor Building Formula',exportedAt:new Date().toISOString(),data:read()};
-  const text=JSON.stringify(payload,null,2),file=new File([text],'ABF-backup.json',{type:'application/json'});
-  try{
-    if(navigator.canShare&&navigator.canShare({files:[file]})){
-      await navigator.share({title:'ABF Backup',files:[file]});
-      toast('Backup ready');
-      return;
-    }
-  }catch(e){
-    if(e?.name==='AbortError')return;
-  }
-  const url=URL.createObjectURL(file),a=document.createElement('a');
-  a.href=url;a.download=file.name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);toast('Backup exported');
-}
-
-function importBackup(e){
-  const file=e.target.files?.[0];if(!file)return;
-  const reader=new FileReader();
-  reader.onload=()=>{
-    try{
-      const payload=JSON.parse(reader.result),d=payload.data||payload;
-      if(!d||!Array.isArray(d.logs))throw new Error('Invalid backup');
-      if(!confirm('Replace the current workout log with this backup?'))return;
-      write(d);renderAll();toast('Backup restored');
-    }catch{toast('Invalid backup file')}
-    e.target.value='';
-  };
-  reader.readAsText(file);
 }
 
 function deleteLog(token){

@@ -1,4 +1,4 @@
-const CACHE='abf-shell-v10';
+const CACHE='abf-shell-v11';
 const ASSETS=['./','./index.html','./day-picker.js','./manifest.webmanifest','./icon.svg'];
 
 self.addEventListener('install',event=>{

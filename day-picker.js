@@ -287,8 +287,10 @@ function renderWorkout(target,type,x){
 }
 function bindWorkout(target,type){
   const host=document.getElementById('todayView'),m=host.querySelector('.movement');
+  host.dataset.dateTimeTouched='0';
   const dateInput=host.querySelector('#exerciseDate'),timeInput=host.querySelector('#exerciseTime');
-  if(!window.__abfTimerStartBound){window.__abfTimerStartBound=true;document.addEventListener('abfWorkoutStarted',()=>{const view=document.getElementById('todayView');if(!view)return;const d=view.querySelector('#exerciseDate'),t=view.querySelector('#exerciseTime');const p=timerStartParts();if(d&&t&&p){d.value=p.date;t.value=p.time}})}
+  [dateInput,timeInput].forEach(el=>el.addEventListener('input',()=>{host.dataset.dateTimeTouched='1'}));
+  if(!window.__abfTimerStartBound){window.__abfTimerStartBound=true;document.addEventListener('abfWorkoutStarted',()=>{const view=document.getElementById('todayView');if(!view)return;const d=view.querySelector('#exerciseDate'),t=view.querySelector('#exerciseTime');const p=timerStartParts();if(d&&t&&p&&view.dataset.dateTimeTouched!=='1'){d.value=p.date;t.value=p.time}})}
   if(window.ABFTracker?.isWorkoutRunning?.()||window.ABFTracker?.getWorkoutSeconds?.()>0){const p=timerStartParts();if(p){dateInput.value=p.date;timeInput.value=p.time}}
   host.querySelector('#pickWeek').addEventListener('change',e=>{selected={week:Number(e.target.value),day:1};renderSelected(selected)});
   host.querySelector('#pickDay').addEventListener('change',e=>{selected={week:target.week,day:Number(e.target.value)};renderSelected(selected)});

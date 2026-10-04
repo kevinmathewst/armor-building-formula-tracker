@@ -322,17 +322,17 @@ function logToAppleHealth(type, target, row){
   const payload=[type,dateTime,minutes.toFixed(2),row.rounds||0,row.left||0,row.right||0,row.rpe||''].join('|');
   // iOS Shortcuts reliably accepts clipboard input from a URL invocation.
   // Copy the exact payload first, then tell Shortcuts to use the clipboard as its input.
+  // Copy the payload, then launch the Shortcut. The Shortcut itself reads Get Clipboard.
+  // This avoids relying on URL input parameters, which iOS can present inconsistently.
   if(navigator.clipboard?.writeText){
     navigator.clipboard.writeText(payload).then(()=>{
-      const url='shortcuts://run-shortcut?name='+encodeURIComponent('ABF — Log Workout')+'&input=clipboard';
+      const url='shortcuts://run-shortcut?name='+encodeURIComponent('ABF — Log Workout');
       window.location.href=url;
     }).catch(()=>{
-      const url='shortcuts://run-shortcut?name='+encodeURIComponent('ABF — Log Workout')+'&input=text&text='+encodeURIComponent(payload);
-      window.location.href=url;
+      toast('Could not copy workout data to clipboard');
     });
   }else{
-    const url='shortcuts://run-shortcut?name='+encodeURIComponent('ABF — Log Workout')+'&input=text&text='+encodeURIComponent(payload);
-    window.location.href=url;
+    toast('Clipboard access is unavailable');
   }
 }
 

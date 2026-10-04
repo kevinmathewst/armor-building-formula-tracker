@@ -253,7 +253,7 @@ function renderWorkout(target,type,x){
       <div class="selectedPlan"><b>${type}</b> · ${esc(note)}</div>
       <div class="dateTimeGrid">
         <div><label class="field"><span style="display:block">EXERCISE DATE</span><input id="exerciseDate" type="date" value="${esc(date)}"></label></div>
-        <div><label class="field"><span style="display:block">EXERCISE TIME</span><input id="exerciseTime" type="time" value="${esc(time)}"></label></div>
+        <div><label class="field"><span style="display:block">EXERCISE TIME</span><input id="exerciseTime" type="time" value="${esc(startTime)}"></label></div>
       </div>
       <div class="pickerActions"><button type="button" id="prevDay">‹ PREVIOUS</button><button type="button" id="nextDay">NEXT ›</button></div>
     </div>
@@ -283,6 +283,9 @@ function renderWorkout(target,type,x){
 }
 function bindWorkout(target,type){
   const host=document.getElementById('todayView'),m=host.querySelector('.movement');
+  const dateInput=host.querySelector('#exerciseDate'),timeInput=host.querySelector('#exerciseTime');
+  if(!window.__abfTimerStartBound){window.__abfTimerStartBound=true;document.addEventListener('abfWorkoutStarted',()=>{const view=document.getElementById('todayView');if(!view)return;const d=view.querySelector('#exerciseDate'),t=view.querySelector('#exerciseTime');const p=timerStartParts();if(d&&t&&p){d.value=p.date;t.value=p.time}})}
+  if(window.ABFTracker?.isWorkoutRunning?.()||window.ABFTracker?.getWorkoutSeconds?.()>0){const p=timerStartParts();if(p){dateInput.value=p.date;timeInput.value=p.time}}
   host.querySelector('#pickWeek').addEventListener('change',e=>{selected={week:Number(e.target.value),day:1};renderSelected(selected)});
   host.querySelector('#pickDay').addEventListener('change',e=>{selected={week:target.week,day:Number(e.target.value)};renderSelected(selected)});
   host.querySelector('#prevDay').addEventListener('click',()=>move(-1));
@@ -312,8 +315,14 @@ function logToAppleHealth(type, target, row){\n  let minutes=0;\n  const timerSe
   const rounds=Number(m.querySelector('[data-field="rounds"]').textContent)||0,extra=Number(m.querySelector('[data-field="extra"]').textContent)||0;
   let row=d.logs.find(x=>x.key===`${target.week}-${target.day}`);
   if(!row){row={key:`${target.week}-${target.day}`,date:localDate()};d.logs.push(row)}
-  row.date=document.getElementById('exerciseDate').value||row.date||localDate();
-  row[type.toLowerCase()]={type,setup,guide,left,right,rounds,extra,total:total(type,rounds,extra),rpe:m.querySelector('[data-field="rpe"]').value?Number(m.querySelector('[data-field="rpe"]').value):null,time:m.querySelector('[data-field="time"]').value||document.getElementById('exerciseTime').value||'',notes:m.querySelector('[data-field="notes"]').value,saved:true};
+  const timerSeconds=Number(window.ABFTracker?.getWorkoutSeconds?.()||0);
+  const timerStart=timerStartParts();
+  const manualDuration=m.querySelector('[data-field="duration"]').value||'';
+  const duration=timerSeconds>0?formatDuration(timerSeconds):manualDuration;
+  const startDate=document.getElementById('exerciseDate').value||row.date||timerStart?.date||localDate();
+  const startTime=document.getElementById('exerciseTime').value||row.startTime||timerStart?.time||localTime();
+  row.date=startDate;
+  row[type.toLowerCase()]={type,setup,guide,left,right,rounds,extra,total:total(type,rounds,extra),rpe:m.querySelector('[data-field="rpe"]').value?Number(m.querySelector('[data-field="rpe"]').value):null,startTime,duration,time:duration,notes:m.querySelector('[data-field="notes"]').value,saved:true};
   write(d);renderProgress();renderWorkout(target,type,row[type.toLowerCase()]);toast('Saved '+type);setTimeout(()=>logToAppleHealth(type,target,row[type.toLowerCase()]),250);
 }
 function renderAll(){const d=read(),p=currentPlan(d);selected=p;renderWorkout(p,schedule[p.week][p.day-1][0],getEntry(d,p.week,p.day,schedule[p.week][p.day-1][0]));renderProgress();renderProgram()}

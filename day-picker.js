@@ -84,7 +84,7 @@ function currentPlan(d){
 }
 function getEntry(d,w,day,type){
   const row=d.logs.find(x=>x.key===`${w}-${day}`);
-  return row?.[type.toLowerCase()]?migrate(row[type.toLowerCase()],type):{};
+  return row?.[type.toLowerCase()]?{...migrate(row[type.toLowerCase()],type),date:row.date}:{};
 }
 function guideOptions(type,setup){
   if(type==='ABC')return setup==='Double'
@@ -302,8 +302,8 @@ function saveWorkout(target,type){
   const startDate=document.getElementById('exerciseDate').value||timerStart?.date||row.date||localDate();
   const startTime=document.getElementById('exerciseTime').value||timerStart?.time||row.startTime||localTime();
   row.date=startDate;
-  row[type.toLowerCase()]={type,setup,guide,left,right,rounds,extra,total:total(type,rounds,extra),rpe:m.querySelector('[data-field="rpe"]').value?Number(m.querySelector('[data-field="rpe"]').value):null,startTime,duration,time:duration,notes:m.querySelector('[data-field="notes"]').value,saved:true};
-  write(d);renderProgress();renderWorkout(target,type,row[type.toLowerCase()]);toast('Saved '+type);logToAppleHealth(type,row[type.toLowerCase()]);
+  row[type.toLowerCase()]={type,setup,guide,left,right,rounds,extra,total:total(type,rounds,extra),rpe:m.querySelector('[data-field="rpe"]').value?Number(m.querySelector('[data-field="rpe"]').value):null,startTime,duration,notes:m.querySelector('[data-field="notes"]').value,saved:true};
+  write(d);renderProgress();renderWorkout(target,type,row[type.toLowerCase()]);toast('Saved '+type);logToAppleHealth(type,{...row[type.toLowerCase()],date:startDate});
 }
 function renderAll(){const d=read(),p=currentPlan(d);selected=p;renderWorkout(p,schedule[p.week][p.day-1][0],getEntry(d,p.week,p.day,schedule[p.week][p.day-1][0]));renderProgress();renderProgram()}
 function setTab(tab){

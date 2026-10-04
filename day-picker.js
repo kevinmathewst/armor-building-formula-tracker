@@ -318,21 +318,17 @@ function logToAppleHealth(type, target, row){
   else{const rawDuration=String(row.duration||row.time||'').trim();if(/^\d+:\d{1,2}$/.test(rawDuration)){const [m,s]=rawDuration.split(':').map(Number);minutes=Math.max(0.01,m+(s/60))}else if(/^\d+(?:\.\d+)?$/.test(rawDuration)){minutes=Math.max(0.01,Number(rawDuration))}}
   if(minutes<=0){toast('Use the workout timer or enter a duration');return}
   const startTime=row.startTime&&/^\d{2}:\d{2}$/.test(row.startTime)?row.startTime:'00:00';
-  const dateTime=row.date?(row.date+'T'+startTime):'';
+  const dateTime=row._date?(row._date+'T'+startTime):new Date().toISOString().slice(0,10)+'T'+startTime;
   const payload=[type,dateTime,minutes.toFixed(2),row.rounds||0,row.left||0,row.right||0,row.rpe||''].join('|');
-  // iOS Shortcuts reliably accepts clipboard input from a URL invocation.
-  // Copy the exact payload first, then tell Shortcuts to use the clipboard as its input.
-  // Copy the payload, then launch the Shortcut. The Shortcut itself reads Get Clipboard.
-  // This avoids relying on URL input parameters, which iOS can present inconsistently.
+  // iOS officially supports clipboard input for shortcuts://run-shortcut.
   if(navigator.clipboard?.writeText){
     navigator.clipboard.writeText(payload).then(()=>{
-      const url='shortcuts://run-shortcut?name='+encodeURIComponent('ABF — Log Workout');
+      const url='shortcuts://run-shortcut?name='+encodeURIComponent('ABF — Log Workout')+'&input=clipboard';
       window.location.href=url;
-    }).catch(()=>{
-      toast('Could not copy workout data to clipboard');
-    });
+    }).catch(()=>toast('Could not copy workout data to clipboard'));
   }else{
-    toast('Clipboard access is unavailable');
+    const url='shortcuts://run-shortcut?name='+encodeURIComponent('ABF — Log Workout')+'&input=text&text='+encodeURIComponent(payload);
+    window.location.href=url;
   }
 }
 
@@ -353,7 +349,7 @@ function saveWorkout(target,type){
   const startDate=document.getElementById('exerciseDate').value||timerStart?.date||row.date||localDate();
   const startTime=document.getElementById('exerciseTime').value||timerStart?.time||row.startTime||localTime();
   row.date=startDate;
-  row[type.toLowerCase()]={type,setup,guide,left,right,rounds,extra,total:total(type,rounds,extra),rpe:m.querySelector('[data-field="rpe"]').value?Number(m.querySelector('[data-field="rpe"]').value):null,startTime,duration,time:duration,notes:m.querySelector('[data-field="notes"]').value,saved:true};
+  row[type.toLowerCase()]={type,setup,guide,left,right,rounds,extra,total:total(type,rounds,extra),rpe:m.querySelector('[data-field="rpe"]').value?Number(m.querySelector('[data-field="rpe"]').value):null,startTime,duration,time:duration,notes:m.querySelector('[data-field="notes"]').value,saved:true,_date:startDate};
   write(d);renderProgress();renderWorkout(target,type,row[type.toLowerCase()]);toast('Saved '+type);logToAppleHealth(type,target,row[type.toLowerCase()]);
 }
 function renderAll(){const d=read(),p=currentPlan(d);selected=p;renderWorkout(p,schedule[p.week][p.day-1][0],getEntry(d,p.week,p.day,schedule[p.week][p.day-1][0]));renderProgress();renderProgram()}

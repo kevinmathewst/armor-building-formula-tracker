@@ -115,7 +115,7 @@ function injectStyle(){
       .dayPicker{border-radius:11px;padding:7px;margin:4px 0}.dayPickerTitle{font-size:6px}
       .dayPicker select,.dayPicker input,.movement select,.movement input{padding:5px;font-size:8px}
       .selectedPlan{font-size:8px;padding:5px}.dayPickerGrid,.dateTimeGrid,.bellRow,.logGrid{gap:4px}
-      .pickerActions{gap:4px;margin-top:5px}.pickerActions button,.backupRow button{font-size:8px;padding:6px}
+      .pickerActions{gap:4px;margin-top:5px}.pickerActions button{font-size:8px;padding:6px}
       .guideText{font-size:8px;padding:6px}
     }
   `;

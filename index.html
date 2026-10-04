@@ -37,7 +37,7 @@ button,input,select{font:inherit}button{cursor:pointer}.app{max-width:920px;marg
 <div id="toast" class="toast"></div>
 <script>
 (()=>{"use strict";
-const TKEY="abf_timers_v3";
+const TKEY="abf_timers_v4";
 let timers=load(TKEY,{elapsed:0,lastTick:null,running:false,limitEnd:null,restEnd:null,startedAt:null,completed:false}),wakeLock=null;
 function load(k,f){try{return JSON.parse(localStorage.getItem(k))??f}catch{return f}}
 function persist(){localStorage.setItem(TKEY,JSON.stringify(timers))}
@@ -50,7 +50,8 @@ async function keepAwake(){try{if("wakeLock"in navigator&&!wakeLock)wakeLock=awa
 function releaseAwake(){if(wakeLock){wakeLock.release().catch(()=>{});wakeLock=null}}
 function start(){if(timers.running)return;if(timers.completed||timers.elapsed>0||!timers.startedAt){timers.elapsed=0;timers.startedAt=now()}timers.completed=false;timers.running=true;timers.lastTick=now();timers.limitEnd=now()+900000;timers.restEnd=null;persist();document.dispatchEvent(new CustomEvent("abfWorkoutStarted",{detail:{startedAt:timers.startedAt}}));keepAwake();drawTimers()}
 function beginRest(){if(!timers.running||timers.restEnd)return;timers.restEnd=now()+60000;persist();drawTimers();}
-function stop(){if(!timers.running)return;if(!confirm("Stop and end this workout?"))return;const elapsed=Math.floor(workSeconds());releaseAwake();timers={elapsed,lastTick:null,running:false,limitEnd:null,restEnd:null,startedAt:timers.startedAt,completed:true};persist();drawTimers();toast("Workout ended")}
+function finishWorkout(message){if(!timers.running)return;const elapsed=Math.floor(workSeconds());releaseAwake();timers={elapsed,lastTick:null,running:false,limitEnd:null,restEnd:null,startedAt:timers.startedAt,completed:true};persist();drawTimers();if(message)toast(message)}
+function stop(){if(!timers.running)return;if(!confirm("Stop and end this workout?"))return;finishWorkout("Workout ended")}
 function main(){if(!timers.running){start();return}if(timers.restEnd){timers.restEnd=null;persist();drawTimers();toast("Rest ended");return}beginRest()}
 function resetLimit(){timers.limitEnd=timers.running?now()+900000:null;persist();drawTimers();toast("15-minute timer reset")}
 function resetRest(){timers.restEnd=null;persist();drawTimers();toast("Rest timer reset")}
@@ -62,7 +63,7 @@ window.ABFTracker={
 function drawTimers(){
  if(timers.running){timers.elapsed=workSeconds();timers.lastTick=now()}
  let l=remain(timers.limitEnd,900),r=remain(timers.restEnd,60);
- if(timers.limitEnd&&l<=0){timers.limitEnd=null;l=0;persist()}
+ if(timers.limitEnd&&l<=0){timers.limitEnd=null;l=0;if(timers.running){finishWorkout("15-minute limit reached");return}else persist()}
  if(timers.restEnd&&r<=0){timers.restEnd=null;r=60;persist()}
  document.getElementById("workClock").textContent=fmt(workSeconds());
  document.getElementById("limitClock").textContent=fmt(l);

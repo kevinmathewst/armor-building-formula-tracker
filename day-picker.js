@@ -63,7 +63,11 @@ function toast(s){
 }
 function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
 function pad(n){return String(n).padStart(2,'0')}
-function localDate(){const d=new Date();return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`}\nfunction localTime(){const d=new Date();return `${pad(d.getHours())}:${pad(d.getMinutes())}`}\nfunction timerStartParts(){const raw=Number(window.ABFTracker?.getWorkoutStartTimestamp?.()||0);if(!raw)return null;const d=new Date(raw);return{date:`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`,time:`${pad(d.getHours())}:${pad(d.getMinutes())}`}}\nfunction formatDuration(seconds){seconds=Math.max(0,Math.floor(Number(seconds)||0));return `${Math.floor(seconds/60)}:${pad(seconds%60)}`}\nfunction total(type,rounds,extra){return(type==='ABC'?rounds*6:rounds*20)+extra}
+function localDate(){const d=new Date();return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`}
+function localTime(){const d=new Date();return `${pad(d.getHours())}:${pad(d.getMinutes())}`}
+function timerStartParts(){const raw=Number(window.ABFTracker?.getWorkoutStartTimestamp?.()||0);if(!raw)return null;const d=new Date(raw);return{date:`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`,time:`${pad(d.getHours())}:${pad(d.getMinutes())}`}}
+function formatDuration(seconds){seconds=Math.max(0,Math.floor(Number(seconds)||0));return `${Math.floor(seconds/60)}:${pad(seconds%60)}`}
+function total(type,rounds,extra){return(type==='ABC'?rounds*6:rounds*20)+extra}
 
 function migrate(x,type){
   const setup=x.setup||x.variant||'Double';
@@ -305,7 +309,20 @@ function bindWorkout(target,type){
   }));
   host.querySelector('#pickerSave').addEventListener('click',()=>saveWorkout(target,type));
 }
-function logToAppleHealth(type, target, row){\n  let minutes=0;\n  const timerSeconds=Number(window.ABFTracker?.getWorkoutSeconds?.()||0);\n  if(timerSeconds>0){minutes=Math.max(0.01,Math.round((timerSeconds/60)*100)/100)}\n  else{const rawDuration=String(row.duration||row.time||'').trim();if(/^\\d+:\\d{1,2}$/.test(rawDuration)){const [m,s]=rawDuration.split(':').map(Number);minutes=Math.max(0.01,m+(s/60))}else if(/^\\d+(?:\\.\\d+)?$/.test(rawDuration)){minutes=Math.max(0.01,Number(rawDuration))}}\n  if(minutes<=0){toast('Use the workout timer or enter a duration');return}\n  const startTime=row.startTime&&/^\\d{2}:\\d{2}$/.test(row.startTime)?row.startTime:'00:00';\n  const dateTime=row.date?(row.date+'T'+startTime):'';\n  const payload=[type,dateTime,minutes.toFixed(2),row.rounds||0,row.left||0,row.right||0,row.rpe||''].join('|');\n  const url='shortcuts://run-shortcut?name='+encodeURIComponent('ABF — Log Workout')+'&input=text&text='+encodeURIComponent(payload);\n  window.location.href=url;\n}\n\nfunction saveWorkout(target,type){
+function logToAppleHealth(type, target, row){
+  let minutes=0;
+  const timerSeconds=Number(window.ABFTracker?.getWorkoutSeconds?.()||0);
+  if(timerSeconds>0){minutes=Math.max(0.01,Math.round((timerSeconds/60)*100)/100)}
+  else{const rawDuration=String(row.duration||row.time||'').trim();if(/^\\d+:\\d{1,2}$/.test(rawDuration)){const [m,s]=rawDuration.split(':').map(Number);minutes=Math.max(0.01,m+(s/60))}else if(/^\\d+(?:\\.\\d+)?$/.test(rawDuration)){minutes=Math.max(0.01,Number(rawDuration))}}
+  if(minutes<=0){toast('Use the workout timer or enter a duration');return}
+  const startTime=row.startTime&&/^\\d{2}:\\d{2}$/.test(row.startTime)?row.startTime:'00:00';
+  const dateTime=row.date?(row.date+'T'+startTime):'';
+  const payload=[type,dateTime,minutes.toFixed(2),row.rounds||0,row.left||0,row.right||0,row.rpe||''].join('|');
+  const url='shortcuts://run-shortcut?name='+encodeURIComponent('ABF — Log Workout')+'&input=text&text='+encodeURIComponent(payload);
+  window.location.href=url;
+}
+
+function saveWorkout(target,type){
   const d=read(),m=document.querySelector('#todayView .movement'),setup=m.querySelector('[data-field="setup"]').value,guide=m.querySelector('[data-field="guide"]').value;
   let left=20,right=20;
   if(setup==='Single'){left=Number(m.querySelector('[data-field="singleBell"]').value);right=0}

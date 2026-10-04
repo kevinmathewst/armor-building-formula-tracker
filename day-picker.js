@@ -63,8 +63,7 @@ function toast(s){
 }
 function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
 function pad(n){return String(n).padStart(2,'0')}
-function localDate(){const d=new Date();return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`}
-function total(type,rounds,extra){return(type==='ABC'?rounds*6:rounds*20)+extra}
+function localDate(){const d=new Date();return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`}\nfunction localTime(){const d=new Date();return `${pad(d.getHours())}:${pad(d.getMinutes())}`}\nfunction timerStartParts(){const raw=Number(window.ABFTracker?.getWorkoutStartTimestamp?.()||0);if(!raw)return null;const d=new Date(raw);return{date:`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`,time:`${pad(d.getHours())}:${pad(d.getMinutes())}`}}\nfunction formatDuration(seconds){seconds=Math.max(0,Math.floor(Number(seconds)||0));return `${Math.floor(seconds/60)}:${pad(seconds%60)}`}\nfunction total(type,rounds,extra){return(type==='ABC'?rounds*6:rounds*20)+extra}
 
 function migrate(x,type){
   const setup=x.setup||x.variant||'Double';
@@ -243,7 +242,7 @@ function renderSelected(target){
 }
 function renderWorkout(target,type,x){
   const d=read(),note=schedule[target.week][target.day-1][1],setup=x.setup||'Double',guide=selectedGuide(type,setup,x.guide);
-  const rounds=x.rounds??0,extra=x.extra??0,date=x.date||localDate(),time=x.time||'',goal=target.week>=7?(type==='ABC'?'Goal: 30 rounds':'Goal: 100 reps'):(type==='ABC'?'6 reps per round':'20 reps per ladder');
+  const rounds=x.rounds??0,extra=x.extra??0,timerStart=timerStartParts(),date=x.date||timerStart?.date||localDate(),startTime=x.startTime||timerStart?.time||localTime(),duration=x.duration||x.time||'',goal=target.week>=7?(type==='ABC'?'Goal: 30 rounds':'Goal: 100 reps'):(type==='ABC'?'6 reps per round':'20 reps per ladder');
   const host=document.getElementById('todayView');
   host.innerHTML=`
     <div class="dayPicker"><div class="dayPickerTitle">SELECT WORKOUT</div>
@@ -273,7 +272,7 @@ function renderWorkout(target,type,x){
           <div class="field"><label>ROUNDS</label><div class="stepper"><button type="button" data-step="rounds" data-delta="-1">−</button><strong data-field="rounds">${rounds}</strong><button type="button" data-step="rounds" data-delta="1">+</button></div></div>
           <div class="field"><label>EXTRA REPS</label><div class="stepper"><button type="button" data-step="extra" data-delta="-1">−</button><strong data-field="extra">${extra}</strong><button type="button" data-step="extra" data-delta="1">+</button></div></div>
           <div class="field"><label>RPE</label><select data-field="rpe"><option value="">—</option>${Array.from({length:10},(_,i)=>`<option value="${i+1}" ${Number(x.rpe)===i+1?'selected':''}>${i+1}</option>`).join('')}</select></div>
-          <div class="field"><label>TIME</label><input data-field="time" value="${esc(time)}" placeholder="e.g. 12:40"></div>
+          <div class="field"><label>DURATION</label><input data-field="duration" value="${esc(duration)}" placeholder="Auto from timer or e.g. 12:40"></div>
           <div class="field wide"><label>NOTES</label><input data-field="notes" value="${esc(x.notes||'')}" placeholder="Optional"></div>
         </div>
         <div class="summary"><span>Total reps</span><strong data-total>${total(type,rounds,extra)}</strong></div>
@@ -303,26 +302,7 @@ function bindWorkout(target,type){
   }));
   host.querySelector('#pickerSave').addEventListener('click',()=>saveWorkout(target,type));
 }
-function logToAppleHealth(type, target, row){
-  let minutes=0;
-  const rawTime=String(row.time||'').trim();
-  if(/^\d+:\d{1,2}$/.test(rawTime)){
-    const [m,s]=rawTime.split(':').map(Number);
-    minutes=Math.max(0.01,m+(s/60));
-  }else if(/^\d+(?:\.\d+)?$/.test(rawTime)){
-    minutes=Math.max(0.01,Number(rawTime));
-  }else{
-    const seconds=Number(window.ABFTracker?.getWorkoutSeconds?.()||0);
-    if(seconds>0)minutes=Math.max(0.01,Math.round((seconds/60)*100)/100);
-  }
-  if(minutes<=0){ toast('Enter workout time before logging to Health'); return; }
-  const dateTime=row.date ? (row.date+'T'+(row.time&&/^\\d{2}:\\d{2}$/.test(row.time)?row.time:'00:00')) : '';
-  const payload=[type,dateTime,minutes.toFixed(2),row.rounds||0,row.left||0,row.right||0,row.rpe||''].join('|');
-  const url='shortcuts://run-shortcut?name='+encodeURIComponent('ABF — Log Workout')+'&input=text&text='+encodeURIComponent(payload);
-  window.location.href=url;
-}
-
-function saveWorkout(target,type){
+function logToAppleHealth(type, target, row){\n  let minutes=0;\n  const timerSeconds=Number(window.ABFTracker?.getWorkoutSeconds?.()||0);\n  if(timerSeconds>0){minutes=Math.max(0.01,Math.round((timerSeconds/60)*100)/100)}\n  else{const rawDuration=String(row.duration||row.time||'').trim();if(/^\\d+:\\d{1,2}$/.test(rawDuration)){const [m,s]=rawDuration.split(':').map(Number);minutes=Math.max(0.01,m+(s/60))}else if(/^\\d+(?:\\.\\d+)?$/.test(rawDuration)){minutes=Math.max(0.01,Number(rawDuration))}}\n  if(minutes<=0){toast('Use the workout timer or enter a duration');return}\n  const startTime=row.startTime&&/^\\d{2}:\\d{2}$/.test(row.startTime)?row.startTime:'00:00';\n  const dateTime=row.date?(row.date+'T'+startTime):'';\n  const payload=[type,dateTime,minutes.toFixed(2),row.rounds||0,row.left||0,row.right||0,row.rpe||''].join('|');\n  const url='shortcuts://run-shortcut?name='+encodeURIComponent('ABF — Log Workout')+'&input=text&text='+encodeURIComponent(payload);\n  window.location.href=url;\n}\n\nfunction saveWorkout(target,type){
   const d=read(),m=document.querySelector('#todayView .movement'),setup=m.querySelector('[data-field="setup"]').value,guide=m.querySelector('[data-field="guide"]').value;
   let left=20,right=20;
   if(setup==='Single'){left=Number(m.querySelector('[data-field="singleBell"]').value);right=0}

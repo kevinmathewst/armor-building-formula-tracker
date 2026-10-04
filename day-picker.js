@@ -303,6 +303,15 @@ function bindWorkout(target,type){
   }));
   host.querySelector('#pickerSave').addEventListener('click',()=>saveWorkout(target,type));
 }
+function logToAppleHealth(type, target, row){
+  const seconds = Number(window.ABFTracker?.getWorkoutSeconds?.() || 0);
+  if(seconds <= 0){ toast('Start the workout timer before logging to Health'); return; }
+  const minutes = Math.max(0.01, Math.round((seconds/60)*100)/100);
+  const payload = [type, minutes.toFixed(2), row.rounds||0, row.left||0, row.right||0, row.rpe||''].join('|');
+  const url = 'shortcuts://run-shortcut?name=' + encodeURIComponent('ABF — Log Workout') + '&input=text&text=' + encodeURIComponent(payload);
+  window.location.href = url;
+}
+
 function saveWorkout(target,type){
   const d=read(),m=document.querySelector('#todayView .movement'),setup=m.querySelector('[data-field="setup"]').value,guide=m.querySelector('[data-field="guide"]').value;
   let left=20,right=20;
@@ -315,7 +324,7 @@ function saveWorkout(target,type){
   if(!row){row={key:`${target.week}-${target.day}`,date:localDate()};d.logs.push(row)}
   row.date=document.getElementById('exerciseDate').value||row.date||localDate();
   row[type.toLowerCase()]={type,setup,guide,left,right,rounds,extra,total:total(type,rounds,extra),rpe:m.querySelector('[data-field="rpe"]').value?Number(m.querySelector('[data-field="rpe"]').value):null,time:m.querySelector('[data-field="time"]').value||document.getElementById('exerciseTime').value||'',notes:m.querySelector('[data-field="notes"]').value,saved:true};
-  write(d);renderProgress();renderWorkout(target,type,row[type.toLowerCase()]);toast('Saved '+type);
+  write(d);renderProgress();renderWorkout(target,type,row[type.toLowerCase()]);toast('Saved '+type);setTimeout(()=>logToAppleHealth(type,target,row[type.toLowerCase()]),250);
 }
 function renderAll(){const d=read(),p=currentPlan(d);selected=p;renderWorkout(p,schedule[p.week][p.day-1][0],getEntry(d,p.week,p.day,schedule[p.week][p.day-1][0]));renderProgress();renderProgram()}
 function setTab(tab){

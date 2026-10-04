@@ -217,6 +217,11 @@ function renderWorkout(target,type,x){
     <div class="todayHead"><span class="week">WEEK ${target.week} · DAY ${target.day}</span><span class="pill ${target.week>=7?'goal':''}">${target.week>=7?'GOAL WEEK':'TODAY'}</span></div>
     <section class="section"><h2>${type}</h2><div class="note">${esc(note)} · ${goal}</div>
       <div class="movement" data-type="${type}">
+        <div class="logPrimary">
+          <div class="bigMetric"><label>ROUNDS</label><div class="metricInput"><button type="button" data-step="rounds" data-delta="-1">−</button><input data-field="rounds" type="number" inputmode="numeric" min="0" max="35" step="1" value="${rounds}"><button type="button" data-step="rounds" data-delta="1">+</button></div><div class="metricHint">0–35 · tap number to type</div></div>
+          <div class="bigMetric"><label>EXTRA REPS</label><div class="metricInput"><button type="button" data-step="extra" data-delta="-1">−</button><input data-field="extra" type="number" inputmode="numeric" min="0" max="100" step="1" value="${extra}"><button type="button" data-step="extra" data-delta="1">+</button></div><div class="metricHint">0–100 · tap number to type</div></div>
+        </div>
+  
         <div class="field"><label>KETTLEBELL SETUP</label><select data-field="setup">
           <option value="Double" ${setup==='Double'?'selected':''}>Double — two matched bells</option>
           <option value="Single" ${setup==='Single'?'selected':''}>Single — one bell</option>
@@ -225,11 +230,7 @@ function renderWorkout(target,type,x){
         <div class="field" style="margin-top:9px"><label>VISUAL GUIDE</label><select data-field="guide">${guideOptions(type,setup).map(o=>`<option value="${esc(o[0])}" ${guide===o[0]?'selected':''}>${esc(o[1])}</option>`).join('')}</select></div>
         <div id="guideWrap">${guideHTML(type,guide)}</div>
         <div id="setupWrap">${setupControls(setup,x.left||20,x.right??20)}</div>
-        <div class="logPrimary">
-          <div class="bigMetric"><label>ROUNDS</label><div class="metricInput"><button type="button" data-step="rounds" data-delta="-1">−</button><input data-field="rounds" type="number" inputmode="numeric" min="0" max="35" step="1" value="${rounds}"><button type="button" data-step="rounds" data-delta="1">+</button></div><div class="metricHint">0–35 · tap number to type</div></div>
-          <div class="bigMetric"><label>EXTRA REPS</label><div class="metricInput"><button type="button" data-step="extra" data-delta="-1">−</button><input data-field="extra" type="number" inputmode="numeric" min="0" max="100" step="1" value="${extra}"><button type="button" data-step="extra" data-delta="1">+</button></div><div class="metricHint">0–100 · tap number to type</div></div>
-        </div>
-        <div class="logGrid" style="margin-top:8px">
+      <div class="logGrid" style="margin-top:8px">
           <div class="field"><label>RPE</label><select data-field="rpe"><option value="">—</option>${Array.from({length:10},(_,i)=>`<option value="${i+1}" ${Number(x.rpe)===i+1?'selected':''}>${i+1}</option>`).join('')}</select></div>
           <div class="field"><label>DURATION</label><input data-field="duration" value="${esc(duration)}" placeholder="Auto from timer or e.g. 12:40"></div>
           <div class="field wide"><label>NOTES</label><input data-field="notes" value="${esc(x.notes||'')}" placeholder="Optional"></div>

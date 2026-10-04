@@ -54,6 +54,10 @@ function stop(){if(!timers.running)return;if(!confirm("Stop and end this workout
 function main(){if(!timers.running)start();else if(!timers.restEnd)beginRest()}
 function resetLimit(){timers.limitEnd=timers.running?now()+900000:null;persist();drawTimers();toast("15-minute timer reset")}
 function resetRest(){timers.restEnd=null;persist();drawTimers();toast("Rest timer reset")}
+window.ABFTracker={
+  getWorkoutSeconds:()=>Math.floor(workSeconds()),
+  isWorkoutRunning:()=>!!timers.running
+};
 function drawTimers(){
  if(timers.running){timers.elapsed=workSeconds();timers.lastTick=now()}
  let l=remain(timers.limitEnd,900),r=remain(timers.restEnd,60);

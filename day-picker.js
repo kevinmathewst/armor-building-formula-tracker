@@ -136,8 +136,8 @@ function setupControls(setup,left,right){
 function updateTotal(m){
   m.querySelector('[data-total]').textContent=total(
     m.dataset.type,
-    Number(m.querySelector('[data-field="rounds"]').textContent),
-    Number(m.querySelector('[data-field="extra"]').textContent)
+    Number(m.querySelector('[data-field="rounds"]').value)||0,
+    Number(m.querySelector('[data-field="extra"]').value)||0
   );
 }
 
@@ -225,9 +225,11 @@ function renderWorkout(target,type,x){
         <div class="field" style="margin-top:9px"><label>VISUAL GUIDE</label><select data-field="guide">${guideOptions(type,setup).map(o=>`<option value="${esc(o[0])}" ${guide===o[0]?'selected':''}>${esc(o[1])}</option>`).join('')}</select></div>
         <div id="guideWrap">${guideHTML(type,guide)}</div>
         <div id="setupWrap">${setupControls(setup,x.left||20,x.right??20)}</div>
+        <div class="logPrimary">
+          <div class="bigMetric"><label>ROUNDS</label><div class="metricInput"><button type="button" data-step="rounds" data-delta="-1">−</button><input data-field="rounds" type="number" inputmode="numeric" min="0" max="35" step="1" value="${rounds}"><button type="button" data-step="rounds" data-delta="1">+</button></div><div class="metricHint">0–35 · tap number to type</div></div>
+          <div class="bigMetric"><label>EXTRA REPS</label><div class="metricInput"><button type="button" data-step="extra" data-delta="-1">−</button><input data-field="extra" type="number" inputmode="numeric" min="0" max="100" step="1" value="${extra}"><button type="button" data-step="extra" data-delta="1">+</button></div><div class="metricHint">0–100 · tap number to type</div></div>
+        </div>
         <div class="logGrid" style="margin-top:8px">
-          <div class="field"><label>ROUNDS</label><div class="stepper"><button type="button" data-step="rounds" data-delta="-1">−</button><strong data-field="rounds">${rounds}</strong><button type="button" data-step="rounds" data-delta="1">+</button></div></div>
-          <div class="field"><label>EXTRA REPS</label><div class="stepper"><button type="button" data-step="extra" data-delta="-1">−</button><strong data-field="extra">${extra}</strong><button type="button" data-step="extra" data-delta="1">+</button></div></div>
           <div class="field"><label>RPE</label><select data-field="rpe"><option value="">—</option>${Array.from({length:10},(_,i)=>`<option value="${i+1}" ${Number(x.rpe)===i+1?'selected':''}>${i+1}</option>`).join('')}</select></div>
           <div class="field"><label>DURATION</label><input data-field="duration" value="${esc(duration)}" placeholder="Auto from timer or e.g. 12:40"></div>
           <div class="field wide"><label>NOTES</label><input data-field="notes" value="${esc(x.notes||'')}" placeholder="Optional"></div>
@@ -260,8 +262,9 @@ function bindWorkout(target,type){
   host.querySelector('[data-field="guide"]').addEventListener('change',e=>host.querySelector('#guideWrap').innerHTML=guideHTML(type,e.target.value));
   host.querySelectorAll('[data-step]').forEach(b=>b.addEventListener('click',()=>{
     const f=m.querySelector('[data-field="'+b.dataset.step+'"]'),max=b.dataset.step==='rounds'?35:100;
-    f.textContent=Math.max(0,Math.min(max,Number(f.textContent)+Number(b.dataset.delta)));updateTotal(m);
+    f.value=Math.max(0,Math.min(max,Number(f.value||0)+Number(b.dataset.delta)));updateTotal(m);
   }));
+  host.querySelectorAll('[data-field="rounds"],[data-field="extra"]').forEach(f=>f.addEventListener('input',()=>updateTotal(m)));
   host.querySelector('#pickerSave').addEventListener('click',()=>saveWorkout(target,type));
 }
 function logToAppleHealth(type, row){
@@ -292,7 +295,7 @@ function saveWorkout(target,type){
   else if(setup==='Offset'){left=Number(m.querySelector('[data-field="left"]').value);right=Number(m.querySelector('[data-field="right"]').value)}
   else {left=Number(m.querySelector('[data-field="doubleBell"]').value);right=left}
   if(setup==='Offset'&&left===right){toast('Offset setup needs two different weights');return}
-  const rounds=Number(m.querySelector('[data-field="rounds"]').textContent)||0,extra=Number(m.querySelector('[data-field="extra"]').textContent)||0;
+  const rounds=Math.max(0,Math.min(35,Number(m.querySelector('[data-field="rounds"]').value)||0)),extra=Math.max(0,Math.min(100,Number(m.querySelector('[data-field="extra"]').value)||0));
   let row=d.logs.find(x=>x.key===`${target.week}-${target.day}`);
   if(!row){row={key:`${target.week}-${target.day}`,date:localDate()};d.logs.push(row)}
   const timerSeconds=Number(window.ABFTracker?.getWorkoutSeconds?.()||0);

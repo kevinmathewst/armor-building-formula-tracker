@@ -94,7 +94,11 @@ function guideOptions(type,setup){
 }
 function selectedGuide(type,setup,requested){
   const opts=guideOptions(type,setup).map(x=>x[0]);
-  return opts.includes(requested)?requested:opts[0];
+  if(opts.includes(requested))return requested;
+  if(type==='ABC')return setup==='Double'?'ABC Bilateral':'ABC Single/Offset';
+  if(setup==='Offset')return 'See-Saw KB Press';
+  if(setup==='Single')return 'Alternating KB Press';
+  return 'Double KB Press';
 }
 
 function injectStyle(){

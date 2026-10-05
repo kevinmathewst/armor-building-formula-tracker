@@ -209,7 +209,6 @@ function renderWorkout(target,type,x){
   host.innerHTML=`
     <div class="logPrimary topLogPrimary">
       <div class="bigMetric"><label>ROUNDS</label><div class="metricInput"><button type="button" data-step="rounds" data-delta="-1">−</button><input data-field="rounds" type="number" inputmode="numeric" min="0" max="35" step="1" value="\${rounds}"><button type="button" data-step="rounds" data-delta="1">+</button></div><div class="metricHint">0–35 · tap number to type</div></div>
-      <div class="bigMetric"><label>EXTRA REPS</label><div class="metricInput"><button type="button" data-step="extra" data-delta="-1">−</button><input data-field="extra" type="number" inputmode="numeric" min="0" max="100" step="1" value="\${extra}"><button type="button" data-step="extra" data-delta="1">+</button></div><div class="metricHint">0–100 · tap number to type</div></div>
     </div>
     <div class="dayPicker"><div class="dayPickerTitle">SELECT WORKOUT</div>
       <div class="dayPickerGrid">

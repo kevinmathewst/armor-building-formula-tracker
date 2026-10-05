@@ -235,9 +235,10 @@ function renderWorkout(target,type,x){
         <div id="guideWrap">${guideHTML(type,guide)}</div>
         <div id="setupWrap">${setupControls(setup,x.left??20,x.right??(setup==='Offset'?30:20))}</div>
       <div class="logGrid" style="margin-top:8px">
+          <div class="field"><label>EXTRA REPS</label><input data-field="extra" type="number" inputmode="numeric" min="0" max="100" step="1" value="${extra}"></div>
           <div class="field"><label>RPE</label><select data-field="rpe"><option value="">—</option>${Array.from({length:10},(_,i)=>`<option value="${i+1}" ${Number(x.rpe)===i+1?'selected':''}>${i+1}</option>`).join('')}</select></div>
           <div class="field"><label>DURATION</label><input data-field="duration" value="${esc(duration)}" placeholder="Auto from timer or e.g. 12:40"></div>
-          <div class="field wide"><label>NOTES</label><input data-field="notes" value="${esc(x.notes||'')}" placeholder="Optional"></div>
+          <div class="field"><label>NOTES</label><input data-field="notes" value="${esc(x.notes||'')}" placeholder="Optional"></div>
         </div>
         <div class="summary"><span>Total reps</span><strong data-total>${total(type,rounds,extra)}</strong></div>
         <button type="button" class="btn saveBtn" id="pickerSave">${x.saved?'UPDATE':'LOG '+type}</button>

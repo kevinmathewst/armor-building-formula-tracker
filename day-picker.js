@@ -275,22 +275,23 @@ function bindWorkout(target,type){
 function logToAppleHealth(type, row){
   let minutes=0;
   const rawDuration=String(row.duration||row.time||'').trim();
-  if(/^\d+:\d{1,2}$/.test(rawDuration)){const [m,s]=rawDuration.split(':').map(Number);minutes=Math.max(0.01,m+(s/60))}
-  else if(/^\d+(?:\.\d+)?$/.test(rawDuration)){minutes=Math.max(0.01,Number(rawDuration))}
+  if(/^\d+:\d{1,2}$/.test(rawDuration)){
+    const [m,s]=rawDuration.split(':').map(Number);
+    minutes=Math.max(0.01,m+(s/60));
+  }else if(/^\d+(?:\.\d+)?$/.test(rawDuration)){
+    minutes=Math.max(0.01,Number(rawDuration));
+  }
   if(minutes<=0){toast('Use the workout timer or enter a duration');return}
+
   const startTime=row.startTime&&/^\d{2}:\d{2}$/.test(row.startTime)?row.startTime:'00:00';
   const dateTime=(row.date||row._date||new Date().toISOString().slice(0,10))+'T'+startTime;
   const payload=[type,dateTime,minutes.toFixed(2),row.rounds||0,row.left||0,row.right||0,row.rpe||''].join('|');
-  // iOS officially supports clipboard input for shortcuts://run-shortcut.
-  if(navigator.clipboard?.writeText){
-    navigator.clipboard.writeText(payload).then(()=>{
-      const url='shortcuts://run-shortcut?name='+encodeURIComponent('ABF — Log Workout')+'&input=clipboard';
-      window.location.href=url;
-    }).catch(()=>toast('Could not copy workout data to clipboard'));
-  }else{
-    const url='shortcuts://run-shortcut?name='+encodeURIComponent('ABF — Log Workout')+'&input=text&text='+encodeURIComponent(payload);
-    window.location.href=url;
-  }
+
+  // Pass the payload directly through the Shortcuts URL. This avoids the
+  // clipboard handoff, which is unreliable from an iOS Home Screen PWA.
+  const url='shortcuts://run-shortcut?name='+encodeURIComponent('ABF — Log Workout')+
+    '&input=text&text='+encodeURIComponent(payload);
+  window.location.href=url;
 }
 
 function saveWorkout(target,type){

@@ -133,11 +133,12 @@ function setupControls(setup,left,right){
   return`<div class="field"><label>BELLS</label><select data-field="doubleBell">${[20,30,40].map(w=>`<option value="${w}" ${left==w&&right==w?'selected':''}>${w} lb each</option>`).join('')}</select></div>`;
 }
 
-function updateTotal(m){
-  m.querySelector('[data-total]').textContent=total(
+function updateTotal(host){
+  const m=host.querySelector('.movement');
+  host.querySelector('[data-total]').textContent=total(
     m.dataset.type,
-    Number(m.querySelector('[data-field="rounds"]').value)||0,
-    Number(m.querySelector('[data-field="extra"]').value)||0
+    Number(host.querySelector('[data-field="rounds"]').value)||0,
+    Number(host.querySelector('[data-field="extra"]').value)||0
   );
 }
 
@@ -198,10 +199,14 @@ function renderSelected(target){
   renderWorkout(target,type,x);
 }
 function renderWorkout(target,type,x){
-  const d=read(),note=schedule[target.week][target.day-1][1],setup=x.setup||'Double',guide=selectedGuide(type,setup,x.guide);
+  const d=read(),note=schedule[target.week][target.day-1][1],setup=x.setup||'Offset',guide=selectedGuide(type,setup,x.guide);
   const rounds=x.rounds??0,extra=x.extra??0,timerStart=timerStartParts(),date=x.date||timerStart?.date||localDate(),startTime=x.startTime||timerStart?.time||localTime(),duration=x.duration||x.time||'',goal=target.week>=7?(type==='ABC'?'Goal: 30 rounds':'Goal: 100 reps'):(type==='ABC'?'6 reps per round':'20 reps per ladder');
   const host=document.getElementById('todayView');
   host.innerHTML=`
+    <div class="logPrimary topLogPrimary">
+      <div class="bigMetric"><label>ROUNDS</label><div class="metricInput"><button type="button" data-step="rounds" data-delta="-1">−</button><input data-field="rounds" type="number" inputmode="numeric" min="0" max="35" step="1" value="\${rounds}"><button type="button" data-step="rounds" data-delta="1">+</button></div><div class="metricHint">0–35 · tap number to type</div></div>
+      <div class="bigMetric"><label>EXTRA REPS</label><div class="metricInput"><button type="button" data-step="extra" data-delta="-1">−</button><input data-field="extra" type="number" inputmode="numeric" min="0" max="100" step="1" value="\${extra}"><button type="button" data-step="extra" data-delta="1">+</button></div><div class="metricHint">0–100 · tap number to type</div></div>
+    </div>
     <div class="dayPicker"><div class="dayPickerTitle">SELECT WORKOUT</div>
       <div class="dayPickerGrid">
         <select id="pickWeek" aria-label="Program week">${Array.from({length:8},(_,i)=>`<option value="${i+1}" ${target.week===i+1?'selected':''}>Week ${i+1}${i>=6?' — GOAL':''}</option>`).join('')}</select>
@@ -217,19 +222,14 @@ function renderWorkout(target,type,x){
     <div class="todayHead"><span class="week">WEEK ${target.week} · DAY ${target.day}</span><span class="pill ${target.week>=7?'goal':''}">${target.week>=7?'GOAL WEEK':'TODAY'}</span></div>
     <section class="section"><h2>${type}</h2><div class="note">${esc(note)} · ${goal}</div>
       <div class="movement" data-type="${type}">
-        <div class="logPrimary">
-          <div class="bigMetric"><label>ROUNDS</label><div class="metricInput"><button type="button" data-step="rounds" data-delta="-1">−</button><input data-field="rounds" type="number" inputmode="numeric" min="0" max="35" step="1" value="${rounds}"><button type="button" data-step="rounds" data-delta="1">+</button></div><div class="metricHint">0–35 · tap number to type</div></div>
-          <div class="bigMetric"><label>EXTRA REPS</label><div class="metricInput"><button type="button" data-step="extra" data-delta="-1">−</button><input data-field="extra" type="number" inputmode="numeric" min="0" max="100" step="1" value="${extra}"><button type="button" data-step="extra" data-delta="1">+</button></div><div class="metricHint">0–100 · tap number to type</div></div>
-        </div>
-  
         <div class="field"><label>KETTLEBELL SETUP</label><select data-field="setup">
+          <option value="Offset" ${setup==='Offset'?'selected':''}>Offset — two different weights</option>
           <option value="Double" ${setup==='Double'?'selected':''}>Double — two matched bells</option>
           <option value="Single" ${setup==='Single'?'selected':''}>Single — one bell</option>
-          <option value="Offset" ${setup==='Offset'?'selected':''}>Offset — two different weights</option>
         </select></div>
         <div class="field" style="margin-top:9px"><label>VISUAL GUIDE</label><select data-field="guide">${guideOptions(type,setup).map(o=>`<option value="${esc(o[0])}" ${guide===o[0]?'selected':''}>${esc(o[1])}</option>`).join('')}</select></div>
         <div id="guideWrap">${guideHTML(type,guide)}</div>
-        <div id="setupWrap">${setupControls(setup,x.left||20,x.right??20)}</div>
+        <div id="setupWrap">${setupControls(setup,x.left??20,x.right??(setup==='Offset'?30:20))}</div>
       <div class="logGrid" style="margin-top:8px">
           <div class="field"><label>RPE</label><select data-field="rpe"><option value="">—</option>${Array.from({length:10},(_,i)=>`<option value="${i+1}" ${Number(x.rpe)===i+1?'selected':''}>${i+1}</option>`).join('')}</select></div>
           <div class="field"><label>DURATION</label><input data-field="duration" value="${esc(duration)}" placeholder="Auto from timer or e.g. 12:40"></div>
@@ -258,14 +258,14 @@ function bindWorkout(target,type){
     host.querySelector('[data-field="guide"]').innerHTML=guideOptions(type,setup).map(o=>`<option value="${esc(o[0])}">${esc(o[1])}</option>`).join('');
     host.querySelector('[data-field="guide"]').value=guide;
     host.querySelector('#guideWrap').innerHTML=guideHTML(type,guide);
-    host.querySelector('#setupWrap').innerHTML=setupControls(setup,x.left||20,x.right??20);
+    host.querySelector('#setupWrap').innerHTML=setupControls(setup,x.left??20,x.right??(setup==='Offset'?30:20));
   });
   host.querySelector('[data-field="guide"]').addEventListener('change',e=>host.querySelector('#guideWrap').innerHTML=guideHTML(type,e.target.value));
   host.querySelectorAll('[data-step]').forEach(b=>b.addEventListener('click',()=>{
-    const f=m.querySelector('[data-field="'+b.dataset.step+'"]'),max=b.dataset.step==='rounds'?35:100;
-    f.value=Math.max(0,Math.min(max,Number(f.value||0)+Number(b.dataset.delta)));updateTotal(m);
+    const f=host.querySelector('[data-field="'+b.dataset.step+'"]'),max=b.dataset.step==='rounds'?35:100;
+    f.value=Math.max(0,Math.min(max,Number(f.value||0)+Number(b.dataset.delta)));updateTotal(host);
   }));
-  host.querySelectorAll('[data-field="rounds"],[data-field="extra"]').forEach(f=>f.addEventListener('input',()=>updateTotal(m)));
+  host.querySelectorAll('[data-field="rounds"],[data-field="extra"]').forEach(f=>f.addEventListener('input',()=>updateTotal(host)));
   host.querySelector('#pickerSave').addEventListener('click',()=>saveWorkout(target,type));
 }
 function logToAppleHealth(type, row){

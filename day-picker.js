@@ -112,23 +112,74 @@ function injectStyle(){
     .dayPicker select,.dayPicker input,.movement select,.movement input{width:100%;border:1px solid #d7dbe2;border-radius:10px;padding:9px;background:#fff;color:#20242b}
     .selectedPlan{margin-top:9px;background:#f4f5f7;border-radius:12px;padding:9px 11px;font-size:12px;color:#64748b}
     .pickerActions{display:flex;gap:8px;margin-top:9px}.pickerActions button{flex:1;border:0;border-radius:10px;padding:10px;font-weight:900;background:#eef2f7;color:#20242b}
-    .guideBox{margin:10px 0;border:1px solid #dfe3e8;border-radius:14px;overflow:hidden;background:#f7f8fa}
-    .guideText{padding:11px 12px;color:#20242b;font-size:13px;line-height:1.4}
+    .guideBox{margin:10px 0;border:1px solid #dfe3e8;border-radius:16px;overflow:hidden;background:#f7f8fa}
+    .guideHead{display:flex;align-items:center;justify-content:space-between;padding:9px 11px 5px}
+    .guideHead b{font-size:11px;letter-spacing:.08em}
+    .guideHead span{font-size:10px;color:#64748b;font-weight:800}
+    .guideVisual{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;padding:6px}
+    .guideStep{min-width:0;background:#fff;border:1px solid #e1e4e9;border-radius:11px;padding:5px 3px 4px;text-align:center}
+    .guideStep svg{display:block;width:100%;height:112px}
+    .guideStep strong{display:block;font-size:11px;line-height:1.1;margin-top:2px}
+    .guideStep small{display:block;font-size:9px;line-height:1.1;color:#64748b;margin-top:2px}
+    .guideText{padding:4px 10px 9px;color:#64748b;font-size:10px;line-height:1.3}
     .muted{color:#64748b}
     @media(max-width:300px){
       .dayPicker{border-radius:11px;padding:7px;margin:4px 0}.dayPickerTitle{font-size:6px}
       .dayPicker select,.dayPicker input,.movement select,.movement input{padding:5px;font-size:8px}
       .selectedPlan{font-size:8px;padding:5px}.dayPickerGrid,.dateTimeGrid,.bellRow,.logGrid{gap:4px}
       .pickerActions{gap:4px;margin-top:5px}.pickerActions button{font-size:8px;padding:6px}
-      .guideText{font-size:8px;padding:6px}
+      .guideHead{padding:6px 7px 3px}.guideHead b{font-size:8px}.guideHead span{font-size:7px}
+      .guideVisual{gap:3px;padding:4px}.guideStep{border-radius:8px;padding:3px 2px}.guideStep svg{height:78px}
+      .guideStep strong{font-size:7px}.guideStep small{font-size:6px}.guideText{font-size:7px;padding:3px 6px 6px}
     }
   `;
   document.head.appendChild(s);
 }
 
+function figureSVG(pose){
+  const kb=(x,y,scale=1)=>`<g transform="translate(${x} ${y}) scale(${scale})"><path d="M-7 2 Q-7 -6 0 -7 Q7 -6 7 2 L6 7 Q0 10 -6 7 Z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M-5 -7 Q-5 -15 0 -15 Q5 -15 5 -7" fill="none" stroke="currentColor" stroke-width="2"/></g>`;
+  const head='<circle cx="50" cy="22" r="7" fill="none" stroke="currentColor" stroke-width="3"/>';
+  const body='<path d="M50 30 L50 68" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>';
+  const legs='<path d="M50 68 L38 101 M50 68 L62 101" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>';
+  let arms='',bells='';
+  if(pose==='rack'||pose==='squat')arms='<path d="M50 40 L34 51 L28 47 M50 40 L66 51 L72 47" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>';
+  if(pose==='overhead'||pose==='touchdown')arms='<path d="M50 40 L35 24 L31 9 M50 40 L65 24 L69 9" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>';
+  if(pose==='leftOverhead')arms='<path d="M50 40 L35 28 L29 9 M50 40 L67 52 L73 48" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>';
+  if(pose==='rightOverhead')arms='<path d="M50 40 L33 52 L27 48 M50 40 L65 28 L71 9" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>';
+  if(pose==='leftSquat')arms='<path d="M50 40 L35 50 L29 46 M50 40 L64 48 L70 45" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>';
+  if(pose==='rightSquat')arms='<path d="M50 40 L36 48 L30 45 M50 40 L65 50 L71 46" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>';
+  if(pose==='rack'||pose==='overhead'||pose==='touchdown'||pose==='squat')bells=kb(28,47,.9)+kb(72,47,.9);
+  if(pose==='leftOverhead')bells=kb(29,9,.9)+kb(72,48,.9);
+  if(pose==='rightOverhead')bells=kb(28,48,.9)+kb(71,9,.9);
+  if(pose==='leftSquat')bells=kb(29,46,.9);
+  if(pose==='rightSquat')bells=kb(71,46,.9);
+  return`<svg viewBox="0 0 100 112" aria-hidden="true" focusable="false"><g style="color:#20242b">${head}${body}${arms}${legs}${bells}</g></svg>`;
+}
+function guideStep(label,sub,pose){
+  return`<div class="guideStep">${figureSVG(pose)}<strong>${esc(label)}</strong><small>${esc(sub)}</small></div>`;
+}
 function guideHTML(type,guide){
-  const g=type==='ABC'?(guide==='ABC Bilateral'?abcGuides.bilateral:abcGuides.alternating):pressGuides[guide];
-  return`<div class="guideBox"><div class="guideText"><b>${esc(g.title)}</b><br>${esc(g.text)}</div></div>`;
+  let title='',steps=[],cue='';
+  if(type==='ABC'&&guide==='ABC Bilateral'){
+    title='ABC · 2–1–3';cue='Clean → press → squat ×3 → set down.';
+    steps=[guideStep('1 · CLEAN','2 reps','rack'),guideStep('2 · PRESS','1 rep','overhead'),guideStep('3 · SQUAT','3 reps','squat'),guideStep('4 · RESET','bell down','rack')];
+  }else if(type==='ABC'){
+    title='ABC · SINGLE / OFFSET';cue='Left → right → right squat ×2 → reverse.';
+    steps=[guideStep('1 · LEFT','clean + press','leftOverhead'),guideStep('2 · RIGHT','clean + press','rightOverhead'),guideStep('3 · RIGHT','squat ×2','rightSquat'),guideStep('4 · REVERSE','right → left','leftOverhead')];
+  }else if(guide==='Double KB Press'){
+    title='DOUBLE PRESS';cue='Both bells move together.';
+    steps=[guideStep('1 · RACK','start','rack'),guideStep('2 · PRESS','both up','overhead'),guideStep('3 · LOWER','to rack','rack'),guideStep('4 · REPEAT','same path','overhead')];
+  }else if(guide==='Alternating KB Press'){
+    title='ALTERNATING PRESS';cue='One presses while the other rests.';
+    steps=[guideStep('1 · RACK','start','rack'),guideStep('2 · LEFT','up / down','leftOverhead'),guideStep('3 · RIGHT','up / down','rightOverhead'),guideStep('4 · REPEAT','alternate','leftOverhead')];
+  }else if(guide==='See-Saw KB Press'){
+    title='SEE-SAW PRESS';cue='One rises as the other falls.';
+    steps=[guideStep('1 · RACK','start','rack'),guideStep('2 · LEFT UP','right down','leftOverhead'),guideStep('3 · RIGHT UP','left down','rightOverhead'),guideStep('4 · FLOW','alternate','leftOverhead')];
+  }else{
+    title='TOUCH-DOWN PRESS';cue='Both overhead; one bell at a time moves.';
+    steps=[guideStep('1 · LOCKOUT','both up','touchdown'),guideStep('2 · LEFT','down / press','leftOverhead'),guideStep('3 · RIGHT','down / press','rightOverhead'),guideStep('4 · REPEAT','alternate','leftOverhead')];
+  }
+  return`<div class="guideBox"><div class="guideHead"><b>VISUAL GUIDE</b><span>${esc(title)}</span></div><div class="guideVisual">${steps.join('')}</div><div class="guideText">${esc(cue)}</div></div>`;
 }
 
 function setupControls(setup,left,right){
@@ -210,6 +261,7 @@ function renderWorkout(target,type,x){
     <div class="logPrimary topLogPrimary">
       <div class="bigMetric"><label>ROUNDS</label><div class="metricInput"><button type="button" data-step="rounds" data-delta="-1">−</button><input data-field="rounds" type="number" inputmode="numeric" min="0" max="35" step="1" value="\${rounds}"><button type="button" data-step="rounds" data-delta="1">+</button></div><div class="metricHint">0–35 · tap number to type</div></div>
     </div>
+    <div id="topGuideWrap">${guideHTML(type,guide)}</div>
     <div class="dayPicker"><div class="dayPickerTitle">SELECT WORKOUT</div>
       <div class="dayPickerGrid">
         <select id="pickWeek" aria-label="Program week">${Array.from({length:8},(_,i)=>`<option value="${i+1}" ${target.week===i+1?'selected':''}>Week ${i+1}${i>=6?' — GOAL':''}</option>`).join('')}</select>
@@ -230,8 +282,7 @@ function renderWorkout(target,type,x){
           <option value="Double" ${setup==='Double'?'selected':''}>Double — two matched bells</option>
           <option value="Single" ${setup==='Single'?'selected':''}>Single — one bell</option>
         </select></div>
-        <div class="field" style="margin-top:9px"><label>VISUAL GUIDE</label><select data-field="guide">${guideOptions(type,setup).map(o=>`<option value="${esc(o[0])}" ${guide===o[0]?'selected':''}>${esc(o[1])}</option>`).join('')}</select></div>
-        <div id="guideWrap">${guideHTML(type,guide)}</div>
+        <div class="field" style="margin-top:9px"><label>VISUAL GUIDE VARIANT</label><select data-field="guide">${guideOptions(type,setup).map(o=>`<option value="${esc(o[0])}" ${guide===o[0]?'selected':''}>${esc(o[1])}</option>`).join('')}</select></div>
         <div id="setupWrap">${setupControls(setup,x.left??20,x.right??(setup==='Offset'?30:20))}</div>
       <div class="logGrid" style="margin-top:8px">
           <div class="field"><label>EXTRA REPS</label><input data-field="extra" type="number" inputmode="numeric" min="0" max="100" step="1" value="${extra}"></div>
@@ -261,10 +312,10 @@ function bindWorkout(target,type){
     const guide=guideOptions(type,setup)[0][0];
     host.querySelector('[data-field="guide"]').innerHTML=guideOptions(type,setup).map(o=>`<option value="${esc(o[0])}">${esc(o[1])}</option>`).join('');
     host.querySelector('[data-field="guide"]').value=guide;
-    host.querySelector('#guideWrap').innerHTML=guideHTML(type,guide);
+    host.querySelector('#topGuideWrap').innerHTML=guideHTML(type,guide);
     host.querySelector('#setupWrap').innerHTML=setupControls(setup,x.left??20,x.right??(setup==='Offset'?30:20));
   });
-  host.querySelector('[data-field="guide"]').addEventListener('change',e=>host.querySelector('#guideWrap').innerHTML=guideHTML(type,e.target.value));
+  host.querySelector('[data-field="guide"]').addEventListener('change',e=>host.querySelector('#topGuideWrap').innerHTML=guideHTML(type,e.target.value));
   host.querySelectorAll('[data-step]').forEach(b=>b.addEventListener('click',()=>{
     const f=host.querySelector('[data-field="'+b.dataset.step+'"]'),max=b.dataset.step==='rounds'?35:100;
     f.value=Math.max(0,Math.min(max,Number(f.value||0)+Number(b.dataset.delta)));updateTotal(host);

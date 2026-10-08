@@ -80,7 +80,7 @@ function migrate(x,type){
     if(type==='ABC')guide=setup==='Double'?'ABC Bilateral':'ABC Single/Offset';
     else guide=setup==='Single'?'Alternating KB Press':setup==='Offset'?'See-Saw KB Press':'Double KB Press';
   }
-  return{...x,setup,guide};
+  return{...x,setup,guide,total:type==='ABC'?total('ABC',Number(x.rounds)||0,Number(x.extra)||0,setup,guide):total('Press',Number(x.rounds)||0,Number(x.extra)||0,setup,guide)};
 }
 function currentPlan(d){
   for(let week=1;week<=8;week++)for(let day=1;day<=3;day++){
@@ -149,6 +149,7 @@ function figureSVG(pose){
   const legs='<path d="M50 68 L38 101 M50 68 L62 101" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>';
   let arms='',bells='';
   if(pose==='down')arms='<path d="M50 40 L36 58 L30 72 M50 40 L64 58 L70 72" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>';
+  if(pose==='singleRack')arms='<path d="M50 40 L35 51 L29 47" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>';
   if(pose==='singleLeftOverhead')arms='<path d="M50 40 L35 28 L29 9" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>';
   if(pose==='singleRightOverhead')arms='<path d="M50 40 L65 28 L71 9" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>';
   if(pose==='singleRightSquat')arms='<path d="M50 40 L65 50 L71 46" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>';
@@ -160,6 +161,7 @@ function figureSVG(pose){
   if(pose==='rightSquat')arms='<path d="M50 40 L36 48 L30 45 M50 40 L65 50 L71 46" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>';
   if(pose==='rack'||pose==='overhead'||pose==='touchdown'||pose==='squat')bells=kb(28,47,.9)+kb(72,47,.9);
   if(pose==='down')bells=kb(28,76,.9)+kb(72,76,.9);
+  if(pose==='singleRack')bells=kb(29,48,.9);
   if(pose==='singleLeftOverhead')bells=kb(29,9,.9);
   if(pose==='singleRightOverhead')bells=kb(71,9,.9);
   if(pose==='singleRightSquat')bells=kb(71,46,.9);
@@ -188,9 +190,11 @@ function guideHTML(type,guide,setup='Double'){
   }else if(guide==='Double KB Press'){
     title='DOUBLE PRESS';cue='Both bells move together.';
     steps=[guideStep('1 · RACK','start','rack'),guideStep('2 · PRESS','both up','overhead'),guideStep('3 · LOWER','to rack','rack'),guideStep('4 · REPEAT','same path','overhead')];
-  }else if(guide==='Alternating KB Press'){
-    title='ALTERNATING PRESS';cue='One presses while the other rests.';
-    steps=[guideStep('1 · RACK','start','rack'),guideStep('2 · LEFT','up / down','leftOverhead'),guideStep('3 · RIGHT','up / down','rightOverhead'),guideStep('4 · REPEAT','alternate','leftOverhead')];
+    }else if(guide==='Alternating KB Press'){
+    title='ALTERNATING PRESS';cue=setup==='Single'?'One bell alternates sides.':'One bell presses while the other rests.';
+    steps=setup==='Single'
+      ?[guideStep('1 · RACK','start','singleRack'),guideStep('2 · LEFT','up / down','singleLeftOverhead'),guideStep('3 · RIGHT','up / down','singleRightOverhead'),guideStep('4 · REPEAT','alternate','singleLeftOverhead')]
+      :[guideStep('1 · RACK','start','rack'),guideStep('2 · LEFT','up / down','leftOverhead'),guideStep('3 · RIGHT','up / down','rightOverhead'),guideStep('4 · REPEAT','alternate','leftOverhead')];
   }else if(guide==='See-Saw KB Press'){
     title='SEE-SAW PRESS';cue='One rises as the other falls.';
     steps=[guideStep('1 · RACK','start','rack'),guideStep('2 · LEFT UP','right down','leftOverhead'),guideStep('3 · RIGHT UP','left down','rightOverhead'),guideStep('4 · FLOW','alternate','leftOverhead')];
@@ -241,7 +245,7 @@ function renderProgram(){
     <section class="section"><h2>Program</h2>
       <div class="statGrid">
         <div class="stat"><span>PRESS</span><b>2-3-5-10</b><small>20 reps per ladder · goal 100</small></div>
-        <div class="stat"><span>ABC</span><b>2 · 1 · 3</b><small>6 reps per round · goal 30</small></div>
+        <div class="stat"><span>ABC</span><b>2 · 1 · 3</b><small>6 bilateral · 8 single/offset · goal 30</small></div>
       </div>
       <div class="note" style="margin-top:10px"><b>Weeks 1–2:</b> one movement per day, alternating Press and ABC.<br><b>Weeks 3–6:</b> build volume; the hardest session alternates between Day Three (Weeks 3 and 5) and Day Two (Weeks 4 and 6).<br><b>Weeks 7–8:</b> goal weeks.</div>
       <div class="note" style="margin-top:8px"><b>Press guides:</b> Double · Alternating · See-Saw · Touch-Down<br><b>ABC guides:</b> Two-Bell Bilateral · Single / Offset-Load Alternating</div>

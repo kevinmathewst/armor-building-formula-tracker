@@ -2,6 +2,8 @@
 'use strict';
 
 const DATA_KEY='abf_data_v3';
+const SCHEMA_VERSION=2;
+let storageCorrupt=false; let storageError=false;
 const schedule={
   1:[['Press','Calibrate load and technique'],['ABC','Calibrate load and technique'],['Press','Calibrate load and technique']],
   2:[['ABC','Calibrate load and technique'],['Press','Calibrate load and technique'],['ABC','Calibrate load and technique']],
@@ -44,13 +46,17 @@ const abcGuides={
 };
 
 function read(){
-  try{
-    const d=JSON.parse(localStorage.getItem(DATA_KEY));
-    return d&&Array.isArray(d.logs)?d:{startDate:localDate(),logs:[]};
-  }catch{return{startDate:localDate(),logs:[]}}
+  try{const raw=localStorage.getItem(DATA_KEY);if(!raw)return{schemaVersion:SCHEMA_VERSION,startDate:localDate(),logs:[]};
+    const d=JSON.parse(raw);if(!d||!Array.isArray(d.logs))throw 0;d.schemaVersion=SCHEMA_VERSION;return d;
+  }catch{storageCorrupt=true;return{schemaVersion:SCHEMA_VERSION,startDate:localDate(),logs:[]}}
 }
-function write(d){
-  localStorage.setItem(DATA_KEY,JSON.stringify(d));
+function write(d){try{d.schemaVersion=SCHEMA_VERSION;localStorage.setItem(DATA_KEY,JSON.stringify(d));return true}catch{storageError=true;toast('Could not save workout data');return false}}
+function exportBackup(){
+  const raw=localStorage.getItem(DATA_KEY);if(!raw){toast('No workout data to export');return}
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([raw],{type:'application/json'}));a.download='abf-tracker-backup-'+localDate()+'.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),1000);toast('Backup exported');
+}
+function importBackup(file){
+  if(!file)return;const reader=new FileReader();reader.onload=()=>{try{const d=JSON.parse(reader.result);if(!d||!Array.isArray(d.logs))throw 0;if(!confirm('Replace the current ABF workout history with this backup?'))return;d.schemaVersion=SCHEMA_VERSION;if(write(d)){storageCorrupt=false;renderAll();toast('Backup imported')}}catch{toast('Invalid ABF backup file')}};reader.readAsText(file);
 }
 function toast(s){
   const e=document.getElementById('toast');if(!e)return;
@@ -63,7 +69,9 @@ function localDate(){const d=new Date();return `${d.getFullYear()}-${pad(d.getMo
 function localTime(){const d=new Date();return `${pad(d.getHours())}:${pad(d.getMinutes())}`}
 function timerStartParts(){const raw=Number(window.ABFTracker?.getWorkoutStartTimestamp?.()||0);if(!raw)return null;const d=new Date(raw);return{date:`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`,time:`${pad(d.getHours())}:${pad(d.getMinutes())}`}}
 function formatDuration(seconds){seconds=Math.max(0,Math.floor(Number(seconds)||0));return `${Math.floor(seconds/60)}:${pad(seconds%60)}`}
-function total(type,rounds,extra){return(type==='ABC'?rounds*6:rounds*20)+extra}
+function total(type,rounds,extra,setup,guide){return rounds*(type==='Press'?20:(setup==='Double'||guide==='ABC Bilateral'?6:8))+extra}
+function goalFor(week,type,day){if(week===7&&day===2&&type==='ABC')return{label:'GOAL: 30 rounds',target:30,kind:'rounds'};if(week===8&&day===2&&type==='Press')return{label:'GOAL: 100 reps',target:100,kind:'reps'};return null}
+function repBasis(type,setup,guide){return type==='Press'?20:(setup==='Double'||guide==='ABC Bilateral'?6:8)}
 
 function migrate(x,type){
   const setup=x.setup||x.variant||'Double';
@@ -75,21 +83,19 @@ function migrate(x,type){
   return{...x,setup,guide};
 }
 function currentPlan(d){
-  const start=new Date((d.startDate||localDate())+'T00:00:00');
-  const today=new Date();today.setHours(0,0,0,0);
-  const n=Math.max(0,Math.floor((today-start)/86400000));
-  const week=Math.min(8,Math.floor(n/7)+1);
-  const day=n%7+1;
-  return{week,day};
+  for(let week=1;week<=8;week++)for(let day=1;day<=3;day++){
+    const type=schedule[week][day-1][0],row=d.logs.find(x=>x.key===`${week}-${day}`);
+    if(!row||!row[type.toLowerCase()]||!row[type.toLowerCase()].saved)return{week,day};
+  }
+  return{week:8,day:3,complete:true};
 }
 function getEntry(d,w,day,type){
   const row=d.logs.find(x=>x.key===`${w}-${day}`);
   return row?.[type.toLowerCase()]?{...migrate(row[type.toLowerCase()],type),date:row.date}:{};
 }
 function guideOptions(type,setup){
-  if(type==='ABC')return setup==='Double'
-    ?[['ABC Bilateral','Two-Bell Bilateral']]
-    :[['ABC Single/Offset','Single / Offset-Load Alternating']];
+  if(type==='ABC')return setup==='Double'?[['ABC Bilateral','Two-Bell Bilateral']]:[['ABC Single/Offset','Single / Offset-Load Alternating']];
+  if(setup==='Single')return[['Alternating KB Press','Alternating KB Press']];
   return Object.keys(pressGuides).map(k=>[k,pressGuides[k].title]);
 }
 function selectedGuide(type,setup,requested){
@@ -190,11 +196,7 @@ function setupControls(setup,left,right){
 
 function updateTotal(host){
   const m=host.querySelector('.movement');
-  host.querySelector('[data-total]').textContent=total(
-    m.dataset.type,
-    Number(host.querySelector('[data-field="rounds"]').value)||0,
-    Number(host.querySelector('[data-field="extra"]').value)||0
-  );
+  host.querySelector('[data-total]').textContent=total(m.dataset.type,Number(host.querySelector('[data-field="rounds"]').value)||0,Number(host.querySelector('[data-field="extra"]').value)||0,m.querySelector('[data-field="setup"]').value,m.querySelector('[data-field="guide"]').value);
 }
 
 function renderProgress(){
@@ -254,28 +256,29 @@ function renderSelected(target){
   renderWorkout(target,type,x);
 }
 function renderWorkout(target,type,x){
+  window.ABFTracker?.setWorkoutSlot?.(`${target.week}-${target.day}`);
   const d=read(),note=schedule[target.week][target.day-1][1],setup=x.setup||'Offset',guide=selectedGuide(type,setup,x.guide);
-  const rounds=x.rounds??0,extra=x.extra??0,timerStart=timerStartParts(),date=x.date||timerStart?.date||localDate(),startTime=x.startTime||timerStart?.time||localTime(),duration=x.duration||x.time||'',goal=target.week>=7?(type==='ABC'?'Goal: 30 rounds':'Goal: 100 reps'):(type==='ABC'?'6 reps per round':'20 reps per ladder');
+  const rounds=x.rounds??0,extra=x.extra??0,timerStart=timerStartParts(),date=x.date||timerStart?.date||localDate(),startTime=x.startTime||timerStart?.time||localTime(),duration=x.duration||x.time||'',goal=goalFor(target.week,type,target.day),basis=repBasis(type,setup,guide);
   const host=document.getElementById('todayView');
   host.innerHTML=`
     <div class="logPrimary topLogPrimary">
       <div class="bigMetric"><label>ROUNDS</label><div class="metricInput"><button type="button" data-step="rounds" data-delta="-1">−</button><input data-field="rounds" type="number" inputmode="numeric" min="0" max="35" step="1" value="\${rounds}"><button type="button" data-step="rounds" data-delta="1">+</button></div><div class="metricHint">0–35 · tap number to type</div></div>
     </div>
-    <div id="topGuideWrap">${guideHTML(type,guide)}</div>
+    <div id="topGuideWrap">${guideHTML(type,guide,setup)}</div>
     <div class="dayPicker"><div class="dayPickerTitle">SELECT WORKOUT</div>
       <div class="dayPickerGrid">
         <select id="pickWeek" aria-label="Program week">${Array.from({length:8},(_,i)=>`<option value="${i+1}" ${target.week===i+1?'selected':''}>Week ${i+1}${i>=6?' — GOAL':''}</option>`).join('')}</select>
         <select id="pickDay" aria-label="Program day">${[1,2,3].map(i=>`<option value="${i}" ${target.day===i?'selected':''}>Day ${i} · ${schedule[target.week][i-1][0]}</option>`).join('')}</select>
       </div>
-      <div class="selectedPlan"><b>${type}</b> · ${esc(note)}</div>
+      <div class="selectedPlan"><b>${type}</b> · ${esc(note)} · ${goal?esc(goal.label):(type==='ABC'?basis+' reps/round':'20 reps/ladder')}</div>
       <div class="dateTimeGrid">
         <div><label class="field"><span style="display:block">EXERCISE DATE</span><input id="exerciseDate" type="date" value="${esc(date)}"></label></div>
         <div><label class="field"><span style="display:block">EXERCISE TIME</span><input id="exerciseTime" type="time" value="${esc(startTime)}"></label></div>
       </div>
       <div class="pickerActions"><button type="button" id="prevDay">‹ PREVIOUS</button><button type="button" id="nextDay">NEXT ›</button></div>
     </div>
-    <div class="todayHead"><span class="week">WEEK ${target.week} · DAY ${target.day}</span><span class="pill ${target.week>=7?'goal':''}">${target.week>=7?'GOAL WEEK':'TODAY'}</span></div>
-    <section class="section"><h2>${type}</h2><div class="note">${esc(note)} · ${goal}</div>
+    <div class="todayHead"><span class="week">WEEK ${target.week} · DAY ${target.day}</span><span class="pill ${goal?'goal':''}">${goal?'GOAL SESSION':'PROGRAM'}</span></div>
+    <section class="section"><h2>${type}</h2><div class="note">${esc(note)} · ${goal?esc(goal.label):(type==='ABC'?basis+' reps per round':'20 reps per ladder')}</div>
       <div class="movement" data-type="${type}">
         <div class="field"><label>KETTLEBELL SETUP</label><select data-field="setup">
           <option value="Offset" ${setup==='Offset'?'selected':''}>Offset — two different weights</option>
@@ -312,10 +315,11 @@ function bindWorkout(target,type){
     const guide=guideOptions(type,setup)[0][0];
     host.querySelector('[data-field="guide"]').innerHTML=guideOptions(type,setup).map(o=>`<option value="${esc(o[0])}">${esc(o[1])}</option>`).join('');
     host.querySelector('[data-field="guide"]').value=guide;
-    host.querySelector('#topGuideWrap').innerHTML=guideHTML(type,guide);
+    host.querySelector('#topGuideWrap').innerHTML=guideHTML(type,guide,setup);
     host.querySelector('#setupWrap').innerHTML=setupControls(setup,x.left??20,x.right??(setup==='Offset'?30:20));
+    updateTotal(host);
   });
-  host.querySelector('[data-field="guide"]').addEventListener('change',e=>host.querySelector('#topGuideWrap').innerHTML=guideHTML(type,e.target.value));
+  host.querySelector('[data-field="guide"]').addEventListener('change',e=>host.querySelector('#topGuideWrap').innerHTML=guideHTML(type,e.target.value,host.querySelector('[data-field="setup"]').value));
   host.querySelectorAll('[data-step]').forEach(b=>b.addEventListener('click',()=>{
     const f=host.querySelector('[data-field="'+b.dataset.step+'"]'),max=b.dataset.step==='rounds'?35:100;
     f.value=Math.max(0,Math.min(max,Number(f.value||0)+Number(b.dataset.delta)));updateTotal(host);
@@ -362,7 +366,7 @@ function saveWorkout(target,type){
   const startDate=document.getElementById('exerciseDate').value||timerStart?.date||row.date||localDate();
   const startTime=document.getElementById('exerciseTime').value||timerStart?.time||row.startTime||localTime();
   row.date=startDate;
-  row[type.toLowerCase()]={type,setup,guide,left,right,rounds,extra,total:total(type,rounds,extra),rpe:m.querySelector('[data-field="rpe"]').value?Number(m.querySelector('[data-field="rpe"]').value):null,startTime,duration,notes:m.querySelector('[data-field="notes"]').value,saved:true};
+  row[type.toLowerCase()]={type,setup,guide,left,right,rounds,extra,total:total(type,rounds,extra,setup,guide),rpe:m.querySelector('[data-field="rpe"]').value?Number(m.querySelector('[data-field="rpe"]').value):null,startTime,duration,notes:m.querySelector('[data-field="notes"]').value,saved:true};
   write(d);renderProgress();renderWorkout(target,type,row[type.toLowerCase()]);toast('Saved '+type);logToAppleHealth(type,{...row[type.toLowerCase()],date:startDate});
 }
 function renderAll(){const d=read(),p=currentPlan(d);selected=p;renderWorkout(p,schedule[p.week][p.day-1][0],getEntry(d,p.week,p.day,schedule[p.week][p.day-1][0]));renderProgress();renderProgram()}

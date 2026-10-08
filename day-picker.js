@@ -148,6 +148,10 @@ function figureSVG(pose){
   const body='<path d="M50 30 L50 68" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>';
   const legs='<path d="M50 68 L38 101 M50 68 L62 101" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>';
   let arms='',bells='';
+  if(pose==='down')arms='<path d="M50 40 L36 58 L30 72 M50 40 L64 58 L70 72" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>';
+  if(pose==='singleLeftOverhead')arms='<path d="M50 40 L35 28 L29 9" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>';
+  if(pose==='singleRightOverhead')arms='<path d="M50 40 L65 28 L71 9" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>';
+  if(pose==='singleRightSquat')arms='<path d="M50 40 L65 50 L71 46" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>';
   if(pose==='rack'||pose==='squat')arms='<path d="M50 40 L34 51 L28 47 M50 40 L66 51 L72 47" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>';
   if(pose==='overhead'||pose==='touchdown')arms='<path d="M50 40 L35 24 L31 9 M50 40 L65 24 L69 9" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>';
   if(pose==='leftOverhead')arms='<path d="M50 40 L35 28 L29 9 M50 40 L67 52 L73 48" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>';
@@ -155,6 +159,10 @@ function figureSVG(pose){
   if(pose==='leftSquat')arms='<path d="M50 40 L35 50 L29 46 M50 40 L64 48 L70 45" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>';
   if(pose==='rightSquat')arms='<path d="M50 40 L36 48 L30 45 M50 40 L65 50 L71 46" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>';
   if(pose==='rack'||pose==='overhead'||pose==='touchdown'||pose==='squat')bells=kb(28,47,.9)+kb(72,47,.9);
+  if(pose==='down')bells=kb(28,76,.9)+kb(72,76,.9);
+  if(pose==='singleLeftOverhead')bells=kb(29,9,.9);
+  if(pose==='singleRightOverhead')bells=kb(71,9,.9);
+  if(pose==='singleRightSquat')bells=kb(71,46,.9);
   if(pose==='leftOverhead')bells=kb(29,9,.9)+kb(72,48,.9);
   if(pose==='rightOverhead')bells=kb(28,48,.9)+kb(71,9,.9);
   if(pose==='leftSquat')bells=kb(29,46,.9);
@@ -164,14 +172,19 @@ function figureSVG(pose){
 function guideStep(label,sub,pose){
   return`<div class="guideStep">${figureSVG(pose)}<strong>${esc(label)}</strong><small>${esc(sub)}</small></div>`;
 }
-function guideHTML(type,guide){
+function guideHTML(type,guide,setup='Double'){
   let title='',steps=[],cue='';
   if(type==='ABC'&&guide==='ABC Bilateral'){
     title='ABC · 2–1–3';cue='Clean → press → squat ×3 → set down.';
-    steps=[guideStep('1 · CLEAN','2 reps','rack'),guideStep('2 · PRESS','1 rep','overhead'),guideStep('3 · SQUAT','3 reps','squat'),guideStep('4 · RESET','bell down','rack')];
-  }else if(type==='ABC'){
-    title='ABC · SINGLE / OFFSET';cue='Left → right → right squat ×2 → reverse.';
-    steps=[guideStep('1 · LEFT','clean + press','leftOverhead'),guideStep('2 · RIGHT','clean + press','rightOverhead'),guideStep('3 · RIGHT','squat ×2','rightSquat'),guideStep('4 · REVERSE','right → left','leftOverhead')];
+    steps=[guideStep('1 · CLEAN','2 reps','rack'),guideStep('2 · PRESS','1 rep','overhead'),guideStep('3 · SQUAT','3 reps','squat'),guideStep('4 · RESET','bells down','down')];
+    }else if(type==='ABC'){
+    if(setup==='Single'){
+      title='ABC · SINGLE';cue='Left clean + press → right clean + press → right squat ×2 → reverse.';
+      steps=[guideStep('1 · LEFT','clean + press','singleLeftOverhead'),guideStep('2 · RIGHT','clean + press','singleRightOverhead'),guideStep('3 · RIGHT','squat ×2','singleRightSquat'),guideStep('4 · REVERSE','right → left','singleLeftOverhead')];
+    }else{
+      title='ABC · OFFSET';cue='Left → right → right squat ×2 → bells down/shake → reverse.';
+      steps=[guideStep('1 · LEFT','clean + press','leftOverhead'),guideStep('2 · RIGHT','clean + press','rightOverhead'),guideStep('3 · RIGHT','squat ×2','rightSquat'),guideStep('4 · RESET','bells down','down')];
+    }
   }else if(guide==='Double KB Press'){
     title='DOUBLE PRESS';cue='Both bells move together.';
     steps=[guideStep('1 · RACK','start','rack'),guideStep('2 · PRESS','both up','overhead'),guideStep('3 · LOWER','to rack','rack'),guideStep('4 · REPEAT','same path','overhead')];
@@ -183,7 +196,7 @@ function guideHTML(type,guide){
     steps=[guideStep('1 · RACK','start','rack'),guideStep('2 · LEFT UP','right down','leftOverhead'),guideStep('3 · RIGHT UP','left down','rightOverhead'),guideStep('4 · FLOW','alternate','leftOverhead')];
   }else{
     title='TOUCH-DOWN PRESS';cue='Both overhead; one bell at a time moves.';
-    steps=[guideStep('1 · LOCKOUT','both up','touchdown'),guideStep('2 · LEFT','down / press','leftOverhead'),guideStep('3 · RIGHT','down / press','rightOverhead'),guideStep('4 · REPEAT','alternate','leftOverhead')];
+    steps=[guideStep('1 · LOCKOUT','both up','touchdown'),guideStep('2 · LEFT','down / press','rightOverhead'),guideStep('3 · RIGHT','down / press','leftOverhead'),guideStep('4 · REPEAT','alternate','rightOverhead')];
   }
   return`<div class="guideBox"><div class="guideHead"><b>VISUAL GUIDE</b><span>${esc(title)}</span></div><div class="guideVisual">${steps.join('')}</div><div class="guideText">${esc(cue)}</div></div>`;
 }
@@ -210,8 +223,8 @@ function renderProgress(){
       <div class="stat"><span>BEST PRESS</span><b>${bestPress} reps</b></div>
       <div class="stat"><span>HEAVIEST BELL</span><b>${weights} lb</b></div>
     </div></section>
-    <section class="section"><h2>History</h2>${logs.length?logs.map(x=>`
-      <div class="historyItem">
+    <section class="section"><h2>Backup</h2><div class="pickerActions"><button type="button" id="exportBackup">EXPORT JSON</button><button type="button" id="importBackupBtn">IMPORT JSON</button><input id="importBackup" type="file" accept="application/json" hidden></div></section><section class="section"><h2>History</h2>${logs.length?logs.map(x=>`
+      <div class="historyItem" data-edit="${x.key}">
         <div class="dateBox">${esc(String(x.date).slice(5))}</div>
         <div><b>${x.type}</b><small>${x.rounds||0} rounds · ${x.total||0} reps · ${Math.max(x.left||0,x.right||0)} lb${x.rpe?' · RPE '+x.rpe:''}<br>${esc(x.guide||'')} · ${esc(x.setup||'')}</small></div>
         <button type="button" class="btn danger" data-delete="${esc(x.key+'|'+x.type.toLowerCase())}">×</button>
@@ -250,8 +263,7 @@ function move(delta){
   const target={week,day};renderSelected(target);
 }
 let selected=null;
-function renderSelected(target){
-  const d=read();selected=target;
+function renderSelected(target){if(window.ABFTracker?.isWorkoutRunning?.()&&window.ABFTracker?.getWorkoutSlot?.()!==`${target.week}-${target.day}`){toast('Finish the current workout before changing sessions');return}const d=read();selected=target;
   const type=schedule[target.week][target.day-1][0],x=getEntry(d,target.week,target.day,type);
   renderWorkout(target,type,x);
 }
@@ -289,7 +301,7 @@ function renderWorkout(target,type,x){
         <div id="setupWrap">${setupControls(setup,x.left??20,x.right??(setup==='Offset'?30:20))}</div>
       <div class="logGrid" style="margin-top:8px">
           <div class="field"><label>EXTRA REPS</label><input data-field="extra" type="number" inputmode="numeric" min="0" max="100" step="1" value="${extra}"></div>
-          <div class="field"><label>RPE</label><select data-field="rpe"><option value="">—</option>${Array.from({length:10},(_,i)=>`<option value="${i+1}" ${Number(x.rpe)===i+1?'selected':''}>${i+1}</option>`).join('')}</select></div>
+          <div class="field"><label>SESSION RPE</label><select data-field="rpe"><option value="">—</option>${Array.from({length:10},(_,i)=>`<option value="${i+1}" ${Number(x.rpe)===i+1?'selected':''}>${i+1}</option>`).join('')}</select></div>
           <div class="field"><label>DURATION</label><input data-field="duration" value="${esc(duration)}" placeholder="Auto from timer or e.g. 12:40"></div>
           <div class="field"><label>NOTES</label><input data-field="notes" value="${esc(x.notes||'')}" placeholder="Optional"></div>
         </div>
@@ -325,6 +337,7 @@ function bindWorkout(target,type){
     f.value=Math.max(0,Math.min(max,Number(f.value||0)+Number(b.dataset.delta)));updateTotal(host);
   }));
   host.querySelectorAll('[data-field="rounds"],[data-field="extra"]').forEach(f=>f.addEventListener('input',()=>updateTotal(host)));
+  host.querySelector('#swapSides')?.addEventListener('click',()=>{const l=host.querySelector('[data-field="left"]'),rr=host.querySelector('[data-field="right"]');if(l&&rr){const v=l.value;l.value=rr.value;rr.value=v}});
   host.querySelector('#pickerSave').addEventListener('click',()=>saveWorkout(target,type));
 }
 function logToAppleHealth(type, row){
@@ -351,6 +364,8 @@ function logToAppleHealth(type, row){
 
 function saveWorkout(target,type){
   const d=read(),m=document.querySelector('#todayView .movement'),setup=m.querySelector('[data-field="setup"]').value,guide=m.querySelector('[data-field="guide"]').value;
+  const existing=getEntry(d,target.week,target.day,type),wasUpdate=!!existing.saved;
+  if(window.ABFTracker?.isWorkoutRunning?.()&&window.ABFTracker?.getWorkoutSlot?.()!==`${target.week}-${target.day}`){toast('Timer belongs to another workout');return}
   let left=20,right=20;
   if(setup==='Single'){left=Number(m.querySelector('[data-field="singleBell"]').value);right=0}
   else if(setup==='Offset'){left=Number(m.querySelector('[data-field="left"]').value);right=Number(m.querySelector('[data-field="right"]').value)}
@@ -359,15 +374,16 @@ function saveWorkout(target,type){
   const rounds=Math.max(0,Math.min(35,Number(m.querySelector('[data-field="rounds"]').value)||0)),extra=Math.max(0,Math.min(100,Number(m.querySelector('[data-field="extra"]').value)||0));
   let row=d.logs.find(x=>x.key===`${target.week}-${target.day}`);
   if(!row){row={key:`${target.week}-${target.day}`,date:localDate()};d.logs.push(row)}
-  const timerSeconds=Number(window.ABFTracker?.getWorkoutSeconds?.()||0);
-  const timerStart=timerStartParts();
+  const timerSnapshot=window.ABFTracker?.consumeWorkoutSession?.(`${target.week}-${target.day}`)||null;
+  const timerSeconds=Number(timerSnapshot?.seconds||0);
+  const timerStart=timerSnapshot?.startedAt?(()=>{const q=new Date(timerSnapshot.startedAt);return{date:`${q.getFullYear()}-${pad(q.getMonth()+1)}-${pad(q.getDate())}`,time:`${pad(q.getHours())}:${pad(q.getMinutes())}`}})():timerStartParts();
   const manualDuration=m.querySelector('[data-field="duration"]').value||'';
   const duration=timerSeconds>0?formatDuration(timerSeconds):manualDuration;
   const startDate=document.getElementById('exerciseDate').value||timerStart?.date||row.date||localDate();
   const startTime=document.getElementById('exerciseTime').value||timerStart?.time||row.startTime||localTime();
   row.date=startDate;
   row[type.toLowerCase()]={type,setup,guide,left,right,rounds,extra,total:total(type,rounds,extra,setup,guide),rpe:m.querySelector('[data-field="rpe"]').value?Number(m.querySelector('[data-field="rpe"]').value):null,startTime,duration,notes:m.querySelector('[data-field="notes"]').value,saved:true};
-  write(d);renderProgress();renderWorkout(target,type,row[type.toLowerCase()]);toast('Saved '+type);logToAppleHealth(type,{...row[type.toLowerCase()],date:startDate});
+  if(!write(d))return;renderProgress();renderWorkout(target,type,row[type.toLowerCase()]);toast((wasUpdate?'Updated ':'Saved ')+type);if(!wasUpdate)logToAppleHealth(type,{...row[type.toLowerCase()],date:startDate});
 }
 function renderAll(){const d=read(),p=currentPlan(d);selected=p;renderWorkout(p,schedule[p.week][p.day-1][0],getEntry(d,p.week,p.day,schedule[p.week][p.day-1][0]));renderProgress();renderProgram()}
 function setTab(tab){

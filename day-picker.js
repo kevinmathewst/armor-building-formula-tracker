@@ -230,6 +230,10 @@ function renderProgress(){
         <button type="button" class="btn danger" data-delete="${esc(x.key+'|'+x.type.toLowerCase())}">×</button>
       </div>`).join(''):'<div class="empty">No workouts logged yet.</div>'}</section>
 `;
+  host.querySelector('#exportBackup')?.addEventListener('click',exportBackup);
+  host.querySelector('#importBackupBtn')?.addEventListener('click',()=>host.querySelector('#importBackup')?.click());
+  host.querySelector('#importBackup')?.addEventListener('change',e=>importBackup(e.target.files?.[0]));
+  host.querySelectorAll('[data-edit]').forEach(el=>el.addEventListener('click',e=>{if(e.target.closest('[data-delete]'))return;const [week,day]=el.dataset.edit.split('-').map(Number);selected={week,day};setTab('today');renderSelected(selected)}));
 }
 function renderProgram(){
   const host=document.getElementById('programView'),p=currentPlan(read());
@@ -256,7 +260,7 @@ function deleteLog(token){
   if(row)delete row[type];
   d.logs=d.logs.filter(x=>x.press||x.abc);write(d);renderAll();toast('Workout deleted');
 }
-function move(delta){
+function move(delta){if(window.ABFTracker?.isWorkoutRunning?.()){toast('Finish the current workout before changing sessions');return}
   const p=selected||currentPlan(read());let day=p.day+delta,week=p.week;
   if(day<1){if(week>1){week--;day=3}else return}
   else if(day>3){if(week<8){week++;day=1}else return}
@@ -318,8 +322,8 @@ function bindWorkout(target,type){
   [dateInput,timeInput].forEach(el=>el.addEventListener('input',()=>{host.dataset.dateTimeTouched='1'}));
   if(!window.__abfTimerStartBound){window.__abfTimerStartBound=true;document.addEventListener('abfWorkoutStarted',()=>{const view=document.getElementById('todayView');if(!view)return;const d=view.querySelector('#exerciseDate'),t=view.querySelector('#exerciseTime');const p=timerStartParts();if(d&&t&&p&&view.dataset.dateTimeTouched!=='1'){d.value=p.date;t.value=p.time}})}
   if(window.ABFTracker?.isWorkoutRunning?.()||window.ABFTracker?.getWorkoutSeconds?.()>0){const p=timerStartParts();if(p){dateInput.value=p.date;timeInput.value=p.time}}
-  host.querySelector('#pickWeek').addEventListener('change',e=>{selected={week:Number(e.target.value),day:1};renderSelected(selected)});
-  host.querySelector('#pickDay').addEventListener('change',e=>{selected={week:target.week,day:Number(e.target.value)};renderSelected(selected)});
+  host.querySelector('#pickWeek').addEventListener('change',e=>{if(window.ABFTracker?.isWorkoutRunning?.()){toast('Finish the current workout before changing sessions');e.target.value=target.week;return}selected={week:Number(e.target.value),day:1};renderSelected(selected)});
+  host.querySelector('#pickDay').addEventListener('change',e=>{if(window.ABFTracker?.isWorkoutRunning?.()){toast('Finish the current workout before changing sessions');e.target.value=target.day;return}selected={week:target.week,day:Number(e.target.value)};renderSelected(selected)});
   host.querySelector('#prevDay').addEventListener('click',()=>move(-1));
   host.querySelector('#nextDay').addEventListener('click',()=>move(1));
   host.querySelector('[data-field="setup"]').addEventListener('change',e=>{
@@ -383,9 +387,11 @@ function saveWorkout(target,type){
   const startTime=document.getElementById('exerciseTime').value||timerStart?.time||row.startTime||localTime();
   row.date=startDate;
   row[type.toLowerCase()]={type,setup,guide,left,right,rounds,extra,total:total(type,rounds,extra,setup,guide),rpe:m.querySelector('[data-field="rpe"]').value?Number(m.querySelector('[data-field="rpe"]').value):null,startTime,duration,notes:m.querySelector('[data-field="notes"]').value,saved:true};
-  if(!write(d))return;renderProgress();renderWorkout(target,type,row[type.toLowerCase()]);toast((wasUpdate?'Updated ':'Saved ')+type);if(!wasUpdate)logToAppleHealth(type,{...row[type.toLowerCase()],date:startDate});
+  if(!write(d))return;
+  window.ABFTracker?.consumeWorkoutSession?.(`${target.week}-${target.day}`);
+  renderProgress();renderWorkout(target,type,row[type.toLowerCase()]);toast((wasUpdate?'Updated ':'Saved ')+type);if(!wasUpdate)logToAppleHealth(type,{...row[type.toLowerCase()],date:startDate});
 }
-function renderAll(){const d=read(),p=currentPlan(d);selected=p;renderWorkout(p,schedule[p.week][p.day-1][0],getEntry(d,p.week,p.day,schedule[p.week][p.day-1][0]));renderProgress();renderProgram()}
+function renderAll(){const d=read(),p=currentPlan(d);selected=p;const type=schedule[p.week][p.day-1][0];renderWorkout(p,type,getEntry(d,p.week,p.day,type));renderProgress();renderProgram();if(storageCorrupt)toast('Stored data could not be read; import a backup to recover it')}
 function setTab(tab){
   ['today','progress','program'].forEach(k=>document.getElementById(k+'View').classList.toggle('hidden',k!==tab));
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===tab));

@@ -74,12 +74,20 @@ function start(){
 function beginRest(){if(!timers.running||timers.restEnd)return;timers.restEnd=now()+60000;persist();drawTimers()}
 function stop(){if(!timers.running)return;if(!confirm("Stop and end this workout?"))return;endSession("Workout ended")}
 function main(){if(!timers.running){start();return}if(timers.restEnd){timers.restEnd=null;persist();drawTimers();toast("Rest ended");return}beginRest()}
-function restartLimit(){if(timers.running){if(!confirm("Restart this 15-minute workout timer? Current timer progress will be discarded."))return;endSession("Workout restarted");start()}else{timers={elapsed:0,lastTick:null,running:false,limitEnd:null,restEnd:null,startedAt:null,completed:false,slotKey:window.ABFTracker?.getWorkoutSlot?.()||null,completedSnapshot:null};persist();drawTimers();toast("Ready")}
+function restartLimit(){
+  if(timers.running){if(!confirm("Restart this 15-minute workout timer? Current timer progress will be discarded."))return;endSession("Workout restarted");start()}
+  else{timers={elapsed:0,lastTick:null,running:false,limitEnd:null,restEnd:null,startedAt:null,completed:false,slotKey:window.ABFTracker?.getWorkoutSlot?.()||null,completedSnapshot:null};persist();drawTimers();toast("Ready")}
+}
 function resetRest(){timers.restEnd=null;persist();drawTimers();toast("Rest timer reset")}
 window.ABFTracker={
   getWorkoutSlot:()=>timers.slotKey,
   setWorkoutSlot:slot=>{if(timers.running&&timers.slotKey&&timers.slotKey!==slot)return false;return true},
   getWorkoutSeconds:()=>Math.floor(capSeconds()),
+  peekWorkoutSession:expectedSlot=>{
+    if(timers.running&&timers.slotKey===expectedSlot)return{seconds:Math.floor(capSeconds()),startedAt:timers.startedAt,slotKey:timers.slotKey};
+    if(timers.completedSnapshot&&timers.completedSnapshot.slotKey===expectedSlot)return timers.completedSnapshot;
+    return null;
+  },
   isWorkoutRunning:()=>!!timers.running,
   getWorkoutStartTimestamp:()=>timers.startedAt||timers.completedSnapshot?.startedAt||0,
   consumeWorkoutSession:expectedSlot=>{
@@ -102,7 +110,7 @@ function drawTimers(){
   if(timers.running){timers.elapsed=Math.min(workSeconds(),900);timers.lastTick=now()}
   let l=timers.running?remain(timers.limitEnd,900):(timers.completed?0:900),r=remain(timers.restEnd,60);
   if(timers.running&&timers.limitEnd&&l<=0){endSession("15-minute limit reached");return}
-  if(timers.restEnd&&r<=0){timers.restEnd=null;r=60;persist()}
+  if(timers.restEnd&&r<=0){timers.restEnd=null;r=60;persist();toast("Rest complete")}
   document.getElementById("workClock").textContent=fmt(timers.running?capSeconds():(timers.completedSnapshot?.seconds||timers.elapsed||0));
   document.getElementById("limitClock").textContent=fmt(l);
   document.getElementById("restClock").textContent=fmt(r);

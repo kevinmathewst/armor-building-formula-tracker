@@ -362,7 +362,16 @@ function logToAppleHealth(type, row){
 
   const startTime=row.startTime&&/^\d{2}:\d{2}$/.test(row.startTime)?row.startTime:'00:00';
   const dateTime=(row.date||row._date||new Date().toISOString().slice(0,10))+'T'+startTime;
-  const payload=[type,dateTime,minutes.toFixed(2),row.rounds||0,row.left||0,row.right||0,row.rpe||''].join('|');
+  const startMs=Date.parse(dateTime);
+  const endDateTime=Number.isFinite(startMs)
+    ? new Date(startMs + Math.round(minutes*60000)).toISOString()
+    : dateTime;
+  // Fields 1–7 preserve the existing Shortcut contract. Fields 8–9 add
+  // an exact Health-query window so the Shortcut can pull wearable data.
+  const payload=[
+    type,dateTime,minutes.toFixed(2),row.rounds||0,row.left||0,row.right||0,row.rpe||'',
+    endDateTime,'ABF_HEALTH_V2'
+  ].join('|');
 
   // Pass the payload directly through the Shortcuts URL. This avoids the
   // clipboard handoff, which is unreliable from an iOS Home Screen PWA.

@@ -203,7 +203,7 @@ function guideHTML(type,guide,setup='Double'){
 
 function setupControls(setup,left,right){
   if(setup==='Single')return`<div class="field"><label>BELL</label><select data-field="singleBell">${[20,30,40].map(w=>`<option value="${w}" ${left==w?'selected':''}>${w} lb</option>`).join('')}</select></div>`;
-  if(setup==='Offset')return`<div class="bellRow"><div class="field"><label>LEFT BELL</label><select data-field="left">${[20,30,40].map(w=>`<option value="${w}" ${left==w?'selected':''}>${w} lb</option>`).join('')}</select></div><div class="field"><label>RIGHT BELL</label><select data-field="right">${[20,30,40].map(w=>`<option value="${w}" ${right==w?'selected':''}>${w} lb</option>`).join('')}</select></div></div>`;
+  if(setup==='Offset')return`<div class="bellRow"><div class="field"><label>LEFT BELL</label><select data-field="left">${[20,30,40].map(w=>`<option value="${w}" ${left==w?'selected':''}>${w} lb</option>`).join('')}</select></div><div class="field"><label>RIGHT BELL</label><select data-field="right">${[20,30,40].map(w=>`<option value="${w}" ${right==w?'selected':''}>${w} lb</option>`).join('')}</select></div></div><button type="button" class="btn" id="swapSides" style="width:100%;margin-top:7px">SWAP OFFSET SIDES</button>`;
   return`<div class="field"><label>BELLS</label><select data-field="doubleBell">${[20,30,40].map(w=>`<option value="${w}" ${left==w&&right==w?'selected':''}>${w} lb each</option>`).join('')}</select></div>`;
 }
 
@@ -374,7 +374,7 @@ function saveWorkout(target,type){
   const rounds=Math.max(0,Math.min(35,Number(m.querySelector('[data-field="rounds"]').value)||0)),extra=Math.max(0,Math.min(100,Number(m.querySelector('[data-field="extra"]').value)||0));
   let row=d.logs.find(x=>x.key===`${target.week}-${target.day}`);
   if(!row){row={key:`${target.week}-${target.day}`,date:localDate()};d.logs.push(row)}
-  const timerSnapshot=window.ABFTracker?.consumeWorkoutSession?.(`${target.week}-${target.day}`)||null;
+  const timerSnapshot=window.ABFTracker?.peekWorkoutSession?.(`${target.week}-${target.day}`)||null;
   const timerSeconds=Number(timerSnapshot?.seconds||0);
   const timerStart=timerSnapshot?.startedAt?(()=>{const q=new Date(timerSnapshot.startedAt);return{date:`${q.getFullYear()}-${pad(q.getMonth()+1)}-${pad(q.getDate())}`,time:`${pad(q.getHours())}:${pad(q.getMinutes())}`}})():timerStartParts();
   const manualDuration=m.querySelector('[data-field="duration"]').value||'';

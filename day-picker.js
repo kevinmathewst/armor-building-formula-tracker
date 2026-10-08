@@ -337,6 +337,7 @@ function bindWorkout(target,type){
     host.querySelector('[data-field="guide"]').value=guide;
     host.querySelector('#topGuideWrap').innerHTML=guideHTML(type,guide,setup);
     host.querySelector('#setupWrap').innerHTML=setupControls(setup,x.left??20,x.right??(setup==='Offset'?30:20));
+    host.querySelector('#swapSides')?.addEventListener('click',()=>{const l=host.querySelector('[data-field="left"]'),rr=host.querySelector('[data-field="right"]');if(l&&rr){const v=l.value;l.value=rr.value;rr.value=v}});
     updateTotal(host);
   });
   host.querySelector('[data-field="guide"]').addEventListener('change',e=>host.querySelector('#topGuideWrap').innerHTML=guideHTML(type,e.target.value,host.querySelector('[data-field="setup"]').value));

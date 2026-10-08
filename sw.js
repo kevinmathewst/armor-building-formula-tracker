@@ -1,4 +1,4 @@
-const CACHE = 'abf-shell-v12';
+const CACHE = 'abf-shell-v13';
 const PRECACHE = ['./', './index.html', './day-picker.js', './manifest.webmanifest', './icon.svg'];
 
 self.addEventListener('install', event => {

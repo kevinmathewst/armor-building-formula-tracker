@@ -24,7 +24,7 @@ button,input,select{font:inherit}button{cursor:pointer;touch-action:manipulation
 <body>
 <div class="app">
 <div class="timerGrid">
-<div class="timer limit"><div class="timerLabel">15-MINUTE LIMIT</div><div id="limitClock" class="time">15:00</div><div class="controls"><button type="button" id="limitReset" class="btn ghost">RESET</button></div></div>
+<div class="timer limit"><div class="timerLabel">15-MINUTE LIMIT</div><div id="limitClock" class="time">15:00</div><div class="controls"><button type="button" id="limitReset" class="btn ghost">RESTART</button></div></div>
 <div class="secondaryTimers">
   <div class="secondaryTimer"><span class="timerLabel">TOTAL</span><span id="workClock" class="time">00:00</span><div class="controls"><button type="button" id="stopBtn" class="btn ghost" disabled>STOP</button></div></div>
   <div class="secondaryTimer"><span class="timerLabel">REST</span><span id="restClock" class="time">01:00</span><div class="controls"><button type="button" id="restReset" class="btn ghost">RESET</button></div></div>
@@ -37,47 +37,81 @@ button,input,select{font:inherit}button{cursor:pointer;touch-action:manipulation
 <div id="toast" class="toast"></div>
 <script>
 (()=>{"use strict";
-const TKEY="abf_timers_v4";
-let timers=load(TKEY,{elapsed:0,lastTick:null,running:false,limitEnd:null,restEnd:null,startedAt:null,completed:false}),wakeLock=null;
+const TKEY="abf_timers_v5";
+let timers=load(TKEY,{elapsed:0,lastTick:null,running:false,limitEnd:null,restEnd:null,startedAt:null,completed:false,slotKey:null,completedSnapshot:null}),wakeLock=null;
 function load(k,f){try{return JSON.parse(localStorage.getItem(k))??f}catch{return f}}
-function persist(){localStorage.setItem(TKEY,JSON.stringify(timers))}
+function persist(){try{localStorage.setItem(TKEY,JSON.stringify(timers));return true}catch{toast("Timer state could not be saved");return false}}
 function now(){return Date.now()}
+function toast(s){const e=document.getElementById("toast");if(!e)return;e.textContent=s;e.classList.add("show");clearTimeout(window.__toast);window.__toast=setTimeout(()=>e.classList.remove("show"),1800)}
 function workSeconds(){return timers.elapsed+(timers.running&&timers.lastTick?Math.max(0,(now()-timers.lastTick)/1000):0)}
+function capSeconds(){const live=workSeconds();return timers.limitEnd?Math.min(live,Math.max(0,(timers.limitEnd-(timers.startedAt||now()))/1000)):live}
 function remain(end,fallback){return end?Math.max(0,(end-now())/1000):fallback}
 function fmt(s){s=Math.max(0,Math.floor(s));return String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0")}
-function toast(s){const e=document.getElementById("toast");if(!e)return;e.textContent=s;e.classList.add("show");clearTimeout(window.__toast);window.__toast=setTimeout(()=>e.classList.remove("show"),1800)}
-async function keepAwake(){try{if("wakeLock"in navigator&&!wakeLock)wakeLock=await navigator.wakeLock.request("screen")}catch{}}
-function releaseAwake(){if(wakeLock){wakeLock.release().catch(()=>{});wakeLock=null}}
-function start(){if(timers.running)return;if(timers.completed||timers.elapsed>0||!timers.startedAt){timers.elapsed=0;timers.startedAt=now()}timers.completed=false;timers.running=true;timers.lastTick=now();timers.limitEnd=now()+900000;timers.restEnd=null;persist();document.dispatchEvent(new CustomEvent("abfWorkoutStarted",{detail:{startedAt:timers.startedAt}}));keepAwake();drawTimers()}
-function beginRest(){if(!timers.running||timers.restEnd)return;timers.restEnd=now()+60000;persist();drawTimers();}
-function finishWorkout(message){if(!timers.running)return;const elapsed=Math.floor(workSeconds());releaseAwake();timers={elapsed,lastTick:null,running:false,limitEnd:null,restEnd:null,startedAt:timers.startedAt,completed:true};persist();drawTimers();if(message)toast(message)}
-function stop(){if(!timers.running)return;if(!confirm("Stop and end this workout?"))return;finishWorkout("Workout ended")}
+function releaseAwake(){if(wakeLock){const w=wakeLock;wakeLock=null;w.release().catch(()=>{})}}
+async function keepAwake(){
+  try{
+    if(!("wakeLock"in navigator)||!timers.running||document.visibilityState!=="visible")return;
+    if(wakeLock&&!wakeLock.released)return;
+    wakeLock=await navigator.wakeLock.request("screen");
+    wakeLock.addEventListener("release",()=>{wakeLock=null;if(timers.running&&document.visibilityState==="visible")setTimeout(keepAwake,50)});
+  }catch{}
+}
+function endSession(reason){
+  const seconds=Math.floor(capSeconds());
+  const snap={seconds,startedAt:timers.startedAt,slotKey:timers.slotKey,reason};
+  releaseAwake();
+  timers={elapsed:seconds,lastTick:null,running:false,limitEnd:null,restEnd:null,startedAt:null,completed:true,slotKey:timers.slotKey,completedSnapshot:snap};
+  persist();drawTimers();
+  if(reason)toast(reason);
+}
+function start(){
+  if(timers.running)return;
+  const slot=window.ABFTracker?.getWorkoutSlot?.()||null;
+  if(!slot){toast("Select a workout first");return}
+  timers={elapsed:0,lastTick:now(),running:true,limitEnd:now()+900000,restEnd:null,startedAt:now(),completed:false,slotKey:slot,completedSnapshot:null};
+  persist();document.dispatchEvent(new CustomEvent("abfWorkoutStarted",{detail:{startedAt:timers.startedAt,slotKey:slot}}));keepAwake();drawTimers();
+}
+function beginRest(){if(!timers.running||timers.restEnd)return;timers.restEnd=now()+60000;persist();drawTimers()}
+function stop(){if(!timers.running)return;if(!confirm("Stop and end this workout?"))return;endSession("Workout ended")}
 function main(){if(!timers.running){start();return}if(timers.restEnd){timers.restEnd=null;persist();drawTimers();toast("Rest ended");return}beginRest()}
-function resetLimit(){timers.limitEnd=timers.running?now()+900000:null;persist();drawTimers();toast("15-minute timer reset")}
+function restartLimit(){if(timers.running){if(!confirm("Restart this 15-minute workout timer? Current timer progress will be discarded."))return;endSession("Workout restarted");start()}else{timers={elapsed:0,lastTick:null,running:false,limitEnd:null,restEnd:null,startedAt:null,completed:false,slotKey:window.ABFTracker?.getWorkoutSlot?.()||null,completedSnapshot:null};persist();drawTimers();toast("Ready")}
 function resetRest(){timers.restEnd=null;persist();drawTimers();toast("Rest timer reset")}
 window.ABFTracker={
-  getWorkoutSeconds:()=>Math.floor(workSeconds()),
+  getWorkoutSlot:()=>timers.slotKey,
+  setWorkoutSlot:slot=>{if(timers.running&&timers.slotKey&&timers.slotKey!==slot)return false;return true},
+  getWorkoutSeconds:()=>Math.floor(capSeconds()),
   isWorkoutRunning:()=>!!timers.running,
-  getWorkoutStartTimestamp:()=>timers.startedAt||0
+  getWorkoutStartTimestamp:()=>timers.startedAt||timers.completedSnapshot?.startedAt||0,
+  consumeWorkoutSession:expectedSlot=>{
+    let snap=null;
+    if(timers.running){
+      if(timers.slotKey!==expectedSlot)return null;
+      snap={seconds:Math.floor(capSeconds()),startedAt:timers.startedAt,slotKey:timers.slotKey};
+      timers={elapsed:0,lastTick:null,running:false,limitEnd:null,restEnd:null,startedAt:null,completed:false,slotKey:null,completedSnapshot:null};
+      releaseAwake();persist();drawTimers();return snap;
+    }
+    if(timers.completedSnapshot&&timers.completedSnapshot.slotKey===expectedSlot){
+      snap=timers.completedSnapshot;
+      timers={elapsed:0,lastTick:null,running:false,limitEnd:null,restEnd:null,startedAt:null,completed:false,slotKey:null,completedSnapshot:null};
+      persist();drawTimers();return snap;
+    }
+    return null;
+  }
 };
 function drawTimers(){
- if(timers.running){timers.elapsed=workSeconds();timers.lastTick=now()}
- let l=remain(timers.limitEnd,900),r=remain(timers.restEnd,60);
- if(timers.limitEnd&&l<=0){timers.limitEnd=null;l=0;if(timers.running){finishWorkout("15-minute limit reached");return}else persist()}
- if(timers.restEnd&&r<=0){timers.restEnd=null;r=60;persist()}
- document.getElementById("workClock").textContent=fmt(workSeconds());
- document.getElementById("limitClock").textContent=fmt(l);
- document.getElementById("restClock").textContent=fmt(r);
- const b=document.getElementById("mainBtn"),active=timers.running,resting=!!timers.restEnd;
- b.textContent=!active?"START":resting?"RESUME":"REST";
- b.className="primaryAction "+(!active?"start":resting?"resting":"rest");
- const stop=document.getElementById("stopBtn");stop.disabled=!active;stop.className="btn "+(active?"stop":"ghost");
+  if(timers.running){timers.elapsed=Math.min(workSeconds(),900);timers.lastTick=now()}
+  let l=timers.running?remain(timers.limitEnd,900):(timers.completed?0:900),r=remain(timers.restEnd,60);
+  if(timers.running&&timers.limitEnd&&l<=0){endSession("15-minute limit reached");return}
+  if(timers.restEnd&&r<=0){timers.restEnd=null;r=60;persist()}
+  document.getElementById("workClock").textContent=fmt(timers.running?capSeconds():(timers.completedSnapshot?.seconds||timers.elapsed||0));
+  document.getElementById("limitClock").textContent=fmt(l);
+  document.getElementById("restClock").textContent=fmt(r);
+  const b=document.getElementById("mainBtn"),active=timers.running,resting=!!timers.restEnd;
+  b.textContent=!active?"START":resting?"RESUME":"REST";b.className="primaryAction "+(!active?"start":resting?"resting":"rest");
+  const stop=document.getElementById("stopBtn");stop.disabled=!active;stop.className="btn "+(active?"stop":"ghost");
 }
 document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"&&timers.running)keepAwake()});
-document.addEventListener("click",e=>{
- const b=e.target.closest("button");if(!b)return;
- if(b.id==="mainBtn")main();else if(b.id==="stopBtn")stop();else if(b.id==="limitReset")resetLimit();else if(b.id==="restReset")resetRest();
-});
+document.addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;if(b.id==="mainBtn")main();else if(b.id==="stopBtn")stop();else if(b.id==="limitReset")restartLimit();else if(b.id==="restReset")resetRest()});
 drawTimers();setInterval(drawTimers,250);
 if("serviceWorker"in navigator)navigator.serviceWorker.register("./sw.js").catch(()=>{});
 })();

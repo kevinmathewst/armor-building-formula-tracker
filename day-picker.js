@@ -411,8 +411,12 @@ function saveWorkout(target,type){
   row.date=startDate;
   row[type.toLowerCase()]={type,setup,guide,left,right,rounds,extra,total:total(type,rounds,extra,setup,guide),rpe:m.querySelector('[data-field="rpe"]').value?Number(m.querySelector('[data-field="rpe"]').value):null,startTime,duration,notes:m.querySelector('[data-field="notes"]').value,saved:true};
   if(!write(d))return;
+  // Launch the Shortcut while the original tap's user activation is still live.
+  // Re-rendering the form first can cause iOS to reject the custom URL scheme.
+  if(!wasUpdate)logToAppleHealth(type,{...row[type.toLowerCase()],date:startDate});
   window.ABFTracker?.consumeWorkoutSession?.(`${target.week}-${target.day}`);
-  renderProgress();renderWorkout(target,type,row[type.toLowerCase()]);toast((wasUpdate?'Updated ':'Saved ')+type);if(!wasUpdate)logToAppleHealth(type,{...row[type.toLowerCase()],date:startDate});
+  renderProgress();renderWorkout(target,type,row[type.toLowerCase()]);
+  toast((wasUpdate?'Updated ':'Saved ')+type);
 }
 function renderAll(){const d=read(),p=currentPlan(d);selected=p;const type=schedule[p.week][p.day-1][0];renderWorkout(p,type,getEntry(d,p.week,p.day,type));renderProgress();renderProgram();if(storageCorrupt)toast('Stored data could not be read; import a backup to recover it')}
 function setTab(tab){

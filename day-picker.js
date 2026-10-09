@@ -373,20 +373,11 @@ function logToAppleHealth(type, row){
     endDateTime,'ABF_HEALTH_V2'
   ].join('|');
 
-  // Launch Shortcuts through a real anchor activation first. iOS standalone
-  // PWAs can be inconsistent with window.location for custom URL schemes.
+  // Navigate directly while still inside the user's Save tap. Delayed or
+  // synthetic anchor clicks can be rejected by iOS from a Home Screen PWA.
   const url='shortcuts://run-shortcut?name='+encodeURIComponent('ABF — Log Workout')+
     '&input=text&text='+encodeURIComponent(payload);
-  const link=document.createElement('a');
-  link.href=url;
-  link.target='_blank';
-  link.rel='noopener';
-  link.style.display='none';
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  // Fallback for browsers that ignore the synthetic anchor activation.
-  setTimeout(()=>{ try{ window.location.href=url; }catch{} },250);
+  window.location.href=url;
 }
 
 function saveWorkout(target,type){
